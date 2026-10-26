@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AgroApp.API/AgroApp.API.csproj" />
+  <Project Path="AgroApp.Application/AgroApp.Application.csproj" />
+  <Project Path="AgroApp.Domain/AgroApp.Domain.csproj" />
+  <Project Path="AgroApp.Infrastructure/AgroApp.Infrastructure.csproj" />
+</Solution>
