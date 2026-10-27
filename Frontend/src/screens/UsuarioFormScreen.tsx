@@ -1,23 +1,23 @@
+import FormScreen from '../components/FormScreen';
 import type { Role } from '../types/models';
 import React, { useState } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors } from '../utils/constants';
-import { UsuariosDB } from '../database/UsuariosDB';
+import { UsuariosDB } from '../database/repositories/UsuariosDB';
 
 const ROLES: Role[] = ['Administrador', 'Trabajador', 'Veterinario'];
 
 export default function UsuarioFormScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
 
   const [nombreCompleto, setNombreCompleto] = useState('');
   const [usuario, setUsuario] = useState('');
@@ -49,9 +49,7 @@ export default function UsuarioFormScreen() {
         Estado: 1,
       });
 
-      Alert.alert('Éxito', `Usuario @${usuario.trim().toLowerCase()} creado con éxito`, [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      router.back();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudo crear el usuario. Es probable que el nombre de usuario ya esté registrado.');
@@ -61,7 +59,7 @@ export default function UsuarioFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.label}>Nombre Completo *</Text>
       <TextInput
         style={styles.input}
@@ -121,10 +119,10 @@ export default function UsuarioFormScreen() {
         {loading ? (
           <ActivityIndicator color="#FFF" />
         ) : (
-          <Text style={styles.submitBtnText}>Crear Usuario</Text>
+          <Text style={styles.submitBtnText}>Crear usuario</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 

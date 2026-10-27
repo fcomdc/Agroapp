@@ -1,298 +1,67 @@
-import type { Sex } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
-import React, { useState, useEffect } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute } from '@react-navigation/native';
-import { isValidDate } from '../utils/helpers';
-import { COLORS } from '../utils/constants';
-import { BovinosDB } from '../database/BovinosDB';
-import { UbicacionesDB } from '../database/UbicacionesDB';
+import { useEffect, useState } from 'react';
+import { Text, TextInput, View } from 'react-native';
+import { router, usePathname } from 'expo-router';
+import { BovinosDB } from '../database/repositories/BovinosDB';
+import { UbicacionesDB } from '../database/repositories/UbicacionesDB';
+import type { Sex, NewBovino } from '../types/models';
+import { useRecordParams } from '../hooks/useRecordParams';
+import { useAuth } from '../context/AuthContext';
+import { isValidDate, formatDateToday } from '../utils/helpers';
+import { ui, palette } from '../theme/tokens';
+import FormScreen from '../components/FormScreen';
+import Button from '../components/Button';
 import PickerSelect from '../components/PickerSelect';
+import ScreenHeading from '../components/ScreenHeading';
 
-const SEXO_OPTIONS: { label: string; value: Sex }[] = [
-  { label: 'Macho', value: 'M' },
-  { label: 'Hembra', value: 'H' },
-];
-
-const ESTADO_OPTIONS = [
-  { label: 'Activo', value: 'Activo' },
-  { label: 'Vendido', value: 'Vendido' },
-  { label: 'Fallecido', value: 'Fallecido' },
-  { label: 'Trasladado', value: 'Trasladado' },
-];
-
+const initial = { Codigo: '', Nombre: '', Sexo: 'H' as Sex, FechaNacimiento: '', Raza: '', Color: '', IdUbicacion: '', Estado: 'Activo', Observaciones: '' };
 export default function BovinoFormScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'BovinoForm'>>();
-  const editBovino = route.params?.bovino || null;
-  const isEditing = !!editBovino;
-
-  const [loading, setLoading] = useState(false);
-  const [ubicaciones, setUbicaciones] = useState<{ label: string; value: string }[]>([]);
-  const [form, setForm] = useState({
-    Codigo: editBovino?.Codigo || '',
-    Nombre: editBovino?.Nombre || '',
-    Sexo: editBovino?.Sexo || 'M',
-    FechaNacimiento: editBovino?.FechaNacimiento || '',
-    Raza: editBovino?.Raza || '',
-    Color: editBovino?.Color || '',
-    IdUbicacion: editBovino?.IdUbicacion ? String(editBovino.IdUbicacion) : '',
-    Estado: editBovino?.Estado || 'Activo',
-    Observaciones: editBovino?.Observaciones || '',
-  });
-
+  const { id } = useRecordParams(); const isEditing = usePathname().endsWith('/editar');
+  const isAdmin = useAuth(s => s.user?.Rol === 'Administrador');
+  const [form, setForm] = useState(initial); const [locations, setLocations] = useState<{ label: string; value: string }[]>([]);
+  const [loading, setLoading] = useState(isEditing); const [saving, setSaving] = useState(false); const [error, setError] = useState(''); const [errors, setErrors] = useState<Record<string, string>>({});
   useEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Editar Bovino' : 'Nuevo Bovino' });
-    async function loadUbicaciones() {
+    let active = true;
+    (async () => {
+      try {
+        const [places, animal] = await Promise.all([UbicacionesDB.getAll(), isEditing && id ? BovinosDB.getById(id) : Promise.resolve(null)]);
+        if (!active) return;
+        setLocations(places.map(p => ({ label: p.Nombre, value: String(p.IdUbicacion) })));
+        if (isEditing && !animal) { setError('No se encontró la ficha para editar.'); return; }
+        if (animal) setForm({ Codigo: animal.Codigo, Nombre: animal.Nombre || '', Sexo: animal.Sexo, FechaNacimiento: animal.FechaNacimiento || '', Raza: animal.Raza || '', Color: animal.Color || '', IdUbicacion: animal.IdUbicacion ? String(animal.IdUbicacion) : '', Estado: animal.Estado, Observaciones: animal.Observaciones || '' });
+      } catch { if (active) setError('No se pudo cargar la información. Vuelve a abrir esta pantalla.'); }
+      finally { if (active) setLoading(false); }
+    })();
+    return () => { active = false; };
+  }, [id, isEditing]);
+  const change = (field: keyof typeof initial, value: string) => { setForm(f => ({ ...f, [field]: value })); setErrors(e => ({ ...e, [field]: '' })); };
+  const save = async () => {
+    if (saving || !isAdmin || loading || error) return;
+    const validation: Record<string, string> = {};
+    if (!form.Codigo.trim()) validation.Codigo = 'Escribe el código de identificación.';
+    if (form.FechaNacimiento && (!isValidDate(form.FechaNacimiento) || form.FechaNacimiento > formatDateToday())) validation.FechaNacimiento = 'Usa una fecha válida, sin días futuros, en AAAA-MM-DD.';
+    setErrors(validation); if (Object.keys(validation).length) return;
+    setSaving(true);
     try {
-      const data = await UbicacionesDB.getAll();
-      setUbicaciones(
-        data.map((u) => ({
-          label: u.Nombre,
-          value: String(u.IdUbicacion),
-        }))
-      );
-    } catch (e) {
-      console.log('Error loading ubicaciones:', e);
-    }
-    }
-    loadUbicaciones();
-  }, [navigation, isEditing]);
-
-  const updateField = <K extends keyof typeof form>(field: K, value: (typeof form)[K]) => {
-    setForm((prev) => ({ ...prev, [field]: value }));
+      const duplicate = await BovinosDB.getByCode(form.Codigo.trim());
+      if (duplicate && duplicate.IdBovino !== id) { setErrors({ Codigo: 'Este código ya pertenece a otra ficha.' }); return; }
+      const data: NewBovino = { ...form, Codigo: form.Codigo.trim(), Nombre: form.Nombre.trim() || null, FechaNacimiento: form.FechaNacimiento || null, IdUbicacion: form.IdUbicacion ? Number(form.IdUbicacion) : null };
+      if (isEditing) await BovinosDB.update(id, data); else await BovinosDB.create(data);
+      router.back();
+    } catch { setErrors({ save: 'No se pudo guardar. Tu información sigue en el formulario.' }); }
+    finally { setSaving(false); }
   };
-
-  const validate = () => {
-    if (!form.Codigo.trim()) {
-      Alert.alert('Validación', 'El código es obligatorio');
-      return false;
-    }
-    if (!form.Sexo) {
-      Alert.alert('Validación', 'El sexo es obligatorio');
-      return false;
-    }
-    if (!form.FechaNacimiento.trim()) {
-      Alert.alert('Validación', 'La fecha de nacimiento es obligatoria');
-      return false;
-    }
-    // Basic date format validation
-    if (!isValidDate(form.FechaNacimiento)) {
-      Alert.alert('Validación', 'La fecha debe tener formato AAAA-MM-DD');
-      return false;
-    }
-    return true;
-  };
-
-  const handleSave = async () => {
-    if (!validate()) return;
-    setLoading(true);
-    try {
-      const data = {
-        ...form,
-        IdUbicacion: form.IdUbicacion ? parseInt(form.IdUbicacion) : null,
-      };
-
-      if (isEditing) {
-        await BovinosDB.update(editBovino.IdBovino, data);
-      } else {
-        await BovinosDB.insert(data);
-      }
-      navigation.goBack();
-    } catch (e) {
-      Alert.alert('Error', 'No se pudo guardar el bovino: ' + (e instanceof Error ? e.message : String(e)));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <View style={styles.formCard}>
-        {/* Código */}
-        <Text style={styles.label}>Código *</Text>
-        <TextInput
-          style={styles.input}
-          value={form.Codigo}
-          onChangeText={(v) => updateField('Codigo', v)}
-          placeholder="Ej: BOV-001"
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-        />
-
-        {/* Nombre */}
-        <Text style={styles.label}>Nombre</Text>
-        <TextInput
-          style={styles.input}
-          value={form.Nombre}
-          onChangeText={(v) => updateField('Nombre', v)}
-          placeholder="Nombre del bovino"
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-        />
-
-        {/* Sexo */}
-        <Text style={styles.label}>Sexo *</Text>
-        <PickerSelect<Sex>
-          options={SEXO_OPTIONS}
-          selectedValue={form.Sexo}
-          onValueChange={(v) => updateField('Sexo', v)}
-        />
-
-        {/* Fecha Nacimiento */}
-        <Text style={styles.label}>Fecha de Nacimiento * (AAAA-MM-DD)</Text>
-        <TextInput
-          style={styles.input}
-          value={form.FechaNacimiento}
-          onChangeText={(v) => updateField('FechaNacimiento', v)}
-          placeholder="2023-01-15"
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-          keyboardType="default"
-        />
-
-        {/* Raza */}
-        <Text style={styles.label}>Raza</Text>
-        <TextInput
-          style={styles.input}
-          value={form.Raza}
-          onChangeText={(v) => updateField('Raza', v)}
-          placeholder="Ej: Brahman, Holstein"
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-        />
-
-        {/* Color */}
-        <Text style={styles.label}>Color</Text>
-        <TextInput
-          style={styles.input}
-          value={form.Color}
-          onChangeText={(v) => updateField('Color', v)}
-          placeholder="Ej: Negro, Pardo"
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-        />
-
-        {/* Ubicación */}
-        <Text style={styles.label}>Ubicación</Text>
-        <PickerSelect
-          options={[{ label: 'Sin asignar', value: '' }, ...ubicaciones]}
-          selectedValue={form.IdUbicacion}
-          onValueChange={(v) => updateField('IdUbicacion', v)}
-        />
-
-        {/* Estado */}
-        <Text style={styles.label}>Estado</Text>
-        <PickerSelect
-          options={ESTADO_OPTIONS}
-          selectedValue={form.Estado}
-          onValueChange={(v) => updateField('Estado', v)}
-        />
-
-        {/* Observaciones */}
-        <Text style={styles.label}>Observaciones</Text>
-        <TextInput
-          style={[styles.input, styles.textArea]}
-          value={form.Observaciones}
-          onChangeText={(v) => updateField('Observaciones', v)}
-          placeholder="Observaciones adicionales..."
-          placeholderTextColor={COLORS.TEXT_LIGHT}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-        />
-      </View>
-
-      {/* Save Button */}
-      <TouchableOpacity
-        style={[styles.saveButton, loading && styles.saveButtonDisabled]}
-        onPress={handleSave}
-        disabled={loading}
-        activeOpacity={0.8}
-      >
-        {loading ? (
-          <ActivityIndicator color={COLORS.WHITE} />
-        ) : (
-          <>
-            <Ionicons name="checkmark-circle" size={22} color={COLORS.WHITE} />
-            <Text style={styles.saveButtonText}>
-              {isEditing ? 'Actualizar' : 'Guardar'}
-            </Text>
-          </>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
-  );
+  const field = (key: Exclude<keyof typeof initial, 'Sexo' | 'Estado' | 'IdUbicacion'>, label: string, placeholder: string) => <View key={key}><Text style={ui.label}>{label}</Text><TextInput accessibilityLabel={label} value={form[key]} onChangeText={v => change(key, v)} style={[ui.input, key === 'Observaciones' && { minHeight: 100, paddingTop: 14, textAlignVertical: 'top' }, errors[key] ? { borderColor: palette.danger } : null]} placeholder={placeholder} placeholderTextColor={palette.muted} multiline={key === 'Observaciones'} autoCapitalize={key === 'Codigo' ? 'characters' : 'sentences'} />{errors[key] ? <Text style={ui.error}>{errors[key]}</Text> : null}</View>;
+  return <FormScreen style={ui.page} contentContainerStyle={ui.content}>
+    <ScreenHeading eyebrow="IDENTIDAD Y TRAZABILIDAD" title={isEditing ? 'Editar su ficha' : 'Un nuevo integrante'} subtitle="El código identifica al animal durante todo su seguimiento." />
+    {error ? <Text accessibilityRole="alert" style={ui.error}>{error}</Text> : loading ? <Text style={ui.subtitle}>Abriendo ficha…</Text> : <>
+      {field('Codigo', 'Código del bovino *', 'Ej. BOV-008')}{field('Nombre', 'Nombre', '¿Cómo lo llaman en la finca?')}
+      <View><Text style={ui.label}>Sexo</Text><PickerSelect<Sex> options={[{ label: 'Hembra', value: 'H' }, { label: 'Macho', value: 'M' }]} selectedValue={form.Sexo} onValueChange={v => change('Sexo', v)} /></View>
+      {field('FechaNacimiento', 'Nacimiento · AAAA-MM-DD', 'Deja vacío si no se conoce')}{field('Raza', 'Raza', 'Ej. Gyr, Brahman, cruce…')}{field('Color', 'Color o señas particulares', 'Para reconocerlo en campo')}
+      <View><Text style={ui.label}>Ubicación actual</Text><PickerSelect options={[{ label: 'Sin asignar', value: '' }, ...locations]} selectedValue={form.IdUbicacion} onValueChange={v => change('IdUbicacion', v)} /></View>
+      <View><Text style={ui.label}>Estado</Text><PickerSelect options={['Activo', 'Vendido', 'Fallecido', 'Trasladado'].map(value => ({ label: value, value }))} selectedValue={form.Estado} onValueChange={v => change('Estado', v)} /><Text style={ui.subtitle}>El historial se conserva al cambiar el estado.</Text></View>
+      {field('Observaciones', 'Observaciones', 'Algo que debamos recordar…')}
+      {errors.save ? <Text accessibilityRole="alert" style={ui.error}>{errors.save}</Text> : null}
+      <Button label={isEditing ? 'Guardar cambios' : 'Guardar ficha'} icon="checkmark" loading={saving} onPress={() => void save()} />
+    </>}
+  </FormScreen>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
-  },
-  content: {
-    padding: 16,
-    paddingBottom: 30,
-  },
-  formCard: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 16,
-    padding: 20,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.TEXT,
-    marginBottom: 6,
-    marginTop: 14,
-  },
-  input: {
-    backgroundColor: COLORS.BACKGROUND,
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 15,
-    color: COLORS.TEXT,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-  },
-  textArea: {
-    minHeight: 90,
-    textAlignVertical: 'top',
-  },
-  saveButton: {
-    backgroundColor: COLORS.PRIMARY,
-    borderRadius: 12,
-    height: 52,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 20,
-    elevation: 3,
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  saveButtonDisabled: {
-    opacity: 0.7,
-  },
-  saveButtonText: {
-    color: COLORS.WHITE,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-});
-

@@ -1,207 +1,48 @@
-import type { Bovino } from '../types/models';
-import React, { useState, useCallback, useMemo } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
+import { useCallback, useMemo, useState } from 'react';
+import { View, Text, FlatList, Pressable, ScrollView, RefreshControl, StyleSheet } from 'react-native';
+import Screen from '../components/Screen';
+import { router, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../utils/constants';
+import { BovinosDB } from '../database/repositories/BovinosDB';
+import type { Bovino } from '../types/models';
+import { useHerdFilters } from '../store/farmStore';
+import { useAuth } from '../context/AuthContext';
+import { palette, ui } from '../theme/tokens';
+import CattleCard from '../components/CattleCard';
 import SearchBar from '../components/SearchBar';
 import EmptyState from '../components/EmptyState';
-import { BovinosDB } from '../database/BovinosDB';
-
-const STATUS_COLORS: Record<string, string> = {
-  Activo: COLORS.PRIMARY,
-  Vendido: COLORS.INFO,
-  Fallecido: COLORS.DANGER,
-  Trasladado: COLORS.WARNING,
-};
+import ScreenHeading from '../components/ScreenHeading';
 
 export default function BovinosListScreen() {
-  const navigation = useNavigation();
-  const [bovinos, setBovinos] = useState<Bovino[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [refreshing, setRefreshing] = useState(false);
-
-  const loadBovinos = useCallback(async () => {
-    try {
-      const data = await BovinosDB.getAll();
-      setBovinos(data);
-    } catch (e) {
-      console.log('Error loading bovinos:', e);
-    }
+  const { query, status, setQuery, setStatus } = useHerdFilters();
+  const isAdmin = useAuth(s => s.user?.Rol === 'Administrador');
+  const [animals, setAnimals] = useState<Bovino[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const load = useCallback(async () => {
+    try { setAnimals(await BovinosDB.getAll()); setError(''); }
+    catch { setError('No se pudo cargar el ganado. Desliza para volver a intentar.'); }
+    finally { setLoading(false); }
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadBovinos();
-    }, [loadBovinos])
-  );
-
-  const filtered = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
-    return bovinos.filter(b => !query || b.Codigo?.toLowerCase().includes(query) || b.Nombre?.toLowerCase().includes(query));
-  }, [bovinos, searchQuery]);
-  const handleSearch = setSearchQuery;
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadBovinos();
-    setRefreshing(false);
-  };
-
-  const renderBovino = ({ item }: { item: Bovino }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('BovinoDetail', { id: item.IdBovino })}
-      activeOpacity={0.7}
-    >
-      <View style={styles.cardIcon}>
-        <Ionicons name="paw" size={28} color={COLORS.PRIMARY} />
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardTitle}>{item.Codigo}</Text>
-        {item.Nombre ? <Text style={styles.cardSubtitle}>{item.Nombre}</Text> : null}
-        <Text style={styles.cardRaza}>{item.Raza || 'Sin raza'}</Text>
-      </View>
-      <View
-        style={[
-          styles.statusBadge,
-          { backgroundColor: (STATUS_COLORS[item.Estado] || COLORS.TEXT_LIGHT) + '20' },
-        ]}
-      >
-        <Text
-          style={[
-            styles.statusText,
-            { color: STATUS_COLORS[item.Estado] || COLORS.TEXT_LIGHT },
-          ]}
-        >
-          {item.Estado || 'Activo'}
-        </Text>
-      </View>
-    </TouchableOpacity>
-  );
-
-  return (
-    <View style={styles.container}>
-      <SearchBar
-        placeholder="Buscar por código o nombre..."
-        value={searchQuery}
-        onChangeText={handleSearch}
-      />
-
-      <FlatList
-        data={filtered}
-        keyExtractor={(item) => String(item.IdBovino)}
-        renderItem={renderBovino}
-        contentContainerStyle={filtered.length === 0 ? styles.emptyContainer : styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.PRIMARY]} />
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="paw"
-            title="Sin bovinos registrados"
-            message="Agrega tu primer bovino pulsando el botón +"
-          />
-        }
-      />
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('BovinoForm')}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color={COLORS.WHITE} />
-      </TouchableOpacity>
+  useFocusEffect(useCallback(() => { void load(); }, [load]));
+  const filtered = useMemo(() => animals.filter(b => (status === 'Todos' || b.Estado === status) && `${b.Codigo} ${b.Nombre || ''} ${b.Raza || ''}`.toLocaleLowerCase().includes(query.toLocaleLowerCase().trim())), [animals, query, status]);
+  const activeCount = animals.filter(b => b.Estado === 'Activo').length;
+  const filters = [['Activo', 'Activos'], ['Todos', 'Todos'], ['Vendido', 'Vendidos'], ['Trasladado', 'Trasladados'], ['Fallecido', 'Fallecidos']];
+  return <Screen>
+    <FlatList data={filtered} keyExtractor={b => String(b.IdBovino)}
+      keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag"
+      contentContainerStyle={{ paddingBottom: 30, flexGrow: 1, width: '100%', maxWidth: 880, alignSelf: 'center' }}
+      renderItem={({ item, index }) => <View style={{ paddingHorizontal: 22 }}><CattleCard bovino={item} index={index} /></View>}
+      ListHeaderComponent={<>
+    <View style={{ paddingHorizontal: 22, paddingTop: 24, gap: 18 }}>
+      <ScreenHeading eyebrow="REGISTRO DEL HATO" title="Nuestro ganado" subtitle={`${activeCount} ${activeCount === 1 ? 'activo' : 'activos'} · ${animals.length} ${animals.length === 1 ? 'ficha' : 'fichas'} en este teléfono`} action={isAdmin ? <Pressable accessibilityRole="button" accessibilityLabel="Registrar bovino" onPress={() => router.push('/bovinos/crear')} style={s.add}><Ionicons name="add" size={25} color={palette.paper} /></Pressable> : undefined} />
     </View>
-  );
+    <View style={{ width: '100%', maxWidth: 900, alignSelf: 'center' }}><SearchBar value={query} onChangeText={setQuery} placeholder="Nombre, código o raza…" /></View>
+    <View><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 22, gap: 8, paddingBottom: 10 }}>{filters.map(([value, label]) => <Pressable accessibilityRole="button" accessibilityState={{ selected: status === value }} key={value} onPress={() => setStatus(value)} style={[s.chip, status === value && s.selected]}><Text style={[s.chipText, status === value && { color: palette.paper }]}>{label}</Text></Pressable>)}</ScrollView></View>
+    {error ? <Text style={[ui.error, { paddingHorizontal: 22 }]}>{error}</Text> : null}
+      </>}
+      refreshControl={<RefreshControl refreshing={loading} onRefresh={() => { setLoading(true); void load(); }} tintColor={palette.green} />}
+      ListEmptyComponent={loading ? undefined : <EmptyState icon="leaf-outline" title={query ? 'Sin coincidencias' : 'No hay fichas en este grupo'} description={query ? 'Prueba otro nombre, código o raza.' : 'Cambia el filtro o registra un bovino.'} iconSize={45} />} />
+  </Screen>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 80,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  card: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3,
-  },
-  cardIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 14,
-    backgroundColor: COLORS.PRIMARY + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.TEXT,
-  },
-  cardSubtitle: {
-    fontSize: 14,
-    color: COLORS.TEXT_LIGHT,
-    marginTop: 2,
-  },
-  cardRaza: {
-    fontSize: 12,
-    color: COLORS.TEXT_LIGHT,
-    marginTop: 2,
-  },
-  statusBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-  },
-});
-
+const s = StyleSheet.create({ add: { backgroundColor: palette.forest, borderRadius: 15, width: 46, height: 46, alignItems: 'center', justifyContent: 'center' }, chip: { paddingHorizontal: 17, minHeight: 42, justifyContent: 'center', borderRadius: 22, backgroundColor: palette.pale }, selected: { backgroundColor: palette.forest }, chipText: { fontSize: 12, fontWeight: '600', color: palette.green } });

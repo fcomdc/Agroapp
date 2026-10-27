@@ -1,6 +1,6 @@
+import Screen from '../components/Screen';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { ReporteSalud } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -13,30 +13,30 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { formatDateTime } from '../utils/helpers';
-import { ReportesSaludDB } from '../database/ReportesSaludDB';
+import { ReportesSaludDB } from '../database/repositories/ReportesSaludDB';
 import EmptyState from '../components/EmptyState';
 
 const GRAVEDAD_COLORS: Record<string, string> = {
-  Baja: '#4CAF50',
-  Media: '#FF9800',
+  Baja: '#28634B',
+  Media: '#A66443',
   Alta: '#F44336',
   Critica: '#B71C1C',
 };
 
 const ESTADO_COLORS: Record<string, string> = {
-  Pendiente: '#FF9800',
-  EnRevision: '#2196F3',
-  Atendido: '#4CAF50',
+  Pendiente: '#A66443',
+  EnRevision: '#4D716B',
+  Atendido: '#28634B',
   Cerrado: '#757575',
 };
 
 export default function ReportesSaludListScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'ReportesSaludList'>>();
-  const idBovino = route.params?.IdBovino || route.params?.idBovino;
+  const router = useRouter();
+  const params = useRecordParams();
+  const idBovino = params.idBovino;
   const [reportes, setReportes] = useState<ReporteSalud[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -70,7 +70,7 @@ export default function ReportesSaludListScreen() {
   );
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <View style={styles.filtersBar}>
         {['Todos', 'Pendientes', 'Atendido'].map((estado) => {
           const isActive = filtroEstado === estado;
@@ -110,7 +110,9 @@ export default function ReportesSaludListScreen() {
               colors={[Colors.PRIMARY]}
             />
           }
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => {
             const gravColor = GRAVEDAD_COLORS[item.Gravedad] || Colors.WARNING;
             const estColor = ESTADO_COLORS[item.Estado] || Colors.TEXT_LIGHT;
@@ -119,7 +121,7 @@ export default function ReportesSaludListScreen() {
               <TouchableOpacity
                 style={styles.card}
                 onPress={() =>
-                  navigation.navigate('ReporteSaludDetail', { idReporte: item.IdReporte })
+                  router.push({ pathname: '/salud/[id]', params: { id: item.IdReporte } })
                 }
               >
                 <View style={styles.cardHeader}>
@@ -158,11 +160,11 @@ export default function ReportesSaludListScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('ReporteSaludForm', { idBovino })}
+        onPress={() => router.push({ pathname: '/salud/crear', params: { idBovino } })}
       >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
-    </View>
+    </Screen>
   );
 }
 
@@ -170,10 +172,10 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   filtersBar: {
     flexDirection: 'row',
-    backgroundColor: '#FFF',
+    backgroundColor: Colors.BACKGROUND,
     padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E3E6DB',
   },
   filterChip: {
     flex: 1,
@@ -207,13 +209,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
   statePill: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
   stateText: { fontSize: 12, fontWeight: '600' },
-  reporterText: { fontSize: 12, color: Colors.TEXT_LIGHT },
+  reporterText: { fontSize: 12, color: Colors.TEXT_LIGHT, flexShrink: 1 },
   fab: {
     position: 'absolute',
     bottom: 24,

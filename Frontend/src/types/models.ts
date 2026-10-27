@@ -27,6 +27,7 @@ interface BovinoRecord {
 }
 export interface Peso extends BovinoRecord {
   IdPeso: number; Peso: number; FechaPeso: string; FechaRegistro: string;
+  Perimetros?: string | null; Longitudes?: string | null; Metodo?: string | null;
 }
 export interface Vacunacion extends BovinoRecord {
   IdVacunacion: number; FechaAplicacion: string; ProximaAplicacion: string | null;

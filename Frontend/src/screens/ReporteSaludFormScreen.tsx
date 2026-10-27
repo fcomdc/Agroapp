@@ -1,29 +1,29 @@
+import FormScreen from '../components/FormScreen';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { Bovino } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useEffect } from 'react';
 import {
+  ScrollView,
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors, Gravedad } from '../utils/constants';
-import { ReportesSaludDB } from '../database/ReportesSaludDB';
-import { BovinosDB } from '../database/BovinosDB';
+import { ReportesSaludDB } from '../database/repositories/ReportesSaludDB';
+import { BovinosDB } from '../database/repositories/BovinosDB';
 import { useAuth } from '../context/AuthContext';
 
 export default function ReporteSaludFormScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'ReporteSaludForm'>>();
+  const router = useRouter();
+  const params = useRecordParams();
   const { user } = useAuth();
 
-  const idBovinoParam = route.params?.idBovino || route.params?.IdBovino;
+  const idBovinoParam = params.idBovino;
 
   const [bovinos, setBovinos] = useState<Bovino[]>([]);
   const [selectedBovinoId, setSelectedBovinoId] = useState<number | null>(idBovinoParam || null);
@@ -69,9 +69,7 @@ export default function ReporteSaludFormScreen() {
         Estado: 'Pendiente',
       });
 
-      Alert.alert('Éxito', 'Reporte de salud registrado para revisión veterinaria', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      router.back();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudo guardar el reporte de salud');
@@ -81,8 +79,9 @@ export default function ReporteSaludFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
-      <Text style={styles.sectionTitle}>Bovino Afectado *</Text>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
+      <Text style={styles.sectionTitle}>Bovino *</Text>
+      {bovinos.length === 0 && <Text style={{ color: Colors.TEXT_LIGHT, marginBottom: 16 }}>No hay bovinos activos. Primero registra una ficha de ganado.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerRow}>
         {bovinos.map((b) => {
           const isSelected = selectedBovinoId === b.IdBovino;
@@ -100,12 +99,12 @@ export default function ReporteSaludFormScreen() {
         })}
       </ScrollView>
 
-      <Text style={styles.label}>Nivel de Gravedad *</Text>
+      <Text style={styles.label}>Nivel de gravedad *</Text>
       <View style={styles.gravedadRow}>
         {Gravedad.map((g) => {
           const isSelected = gravedad === g;
           let activeColor = Colors.PRIMARY;
-          if (g === 'Media') activeColor = '#FF9800';
+          if (g === 'Media') activeColor = '#A66443';
           if (g === 'Alta') activeColor = '#F44336';
           if (g === 'Critica') activeColor = '#B71C1C';
 
@@ -124,7 +123,7 @@ export default function ReporteSaludFormScreen() {
         })}
       </View>
 
-      <Text style={styles.label}>Síntomas Observados *</Text>
+      <Text style={styles.label}>Síntomas observados *</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Ej. Fiebre, renguera en pata derecha, falta de apetito, secreción nasal..."
@@ -134,7 +133,7 @@ export default function ReporteSaludFormScreen() {
         onChangeText={setSintomas}
       />
 
-      <Text style={styles.label}>Observaciones Adicionales</Text>
+      <Text style={styles.label}>Observaciones adicionales</Text>
       <TextInput
         style={[styles.input, styles.textArea]}
         placeholder="Detalles del corral, cambios recientes en pasturas, etc."
@@ -152,17 +151,17 @@ export default function ReporteSaludFormScreen() {
         {loading ? (
           <ActivityIndicator color="#FFF" />
         ) : (
-          <Text style={styles.submitBtnText}>Emitir Reporte Médico</Text>
+          <Text style={styles.submitBtnText}>Guardar observación</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.TEXT, marginBottom: 8 },
-  pickerRow: { flexDirection: 'row', marginBottom: 16 },
+  pickerRow: { flexGrow: 0, flexShrink: 0, flexDirection: 'row', marginBottom: 16 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -197,7 +196,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 14,
   },
-  textArea: { height: 90, textAlignVertical: 'top' },
+  textArea: { minHeight: 90, textAlignVertical: 'top' },
   submitBtn: {
     backgroundColor: '#D32F2F',
     padding: 16,

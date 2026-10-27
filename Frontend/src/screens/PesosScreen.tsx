@@ -1,213 +1,29 @@
+import Screen from '../components/Screen';
+import { useCallback, useState } from 'react';
+import { View, Text, ScrollView } from 'react-native';
+import { router, useFocusEffect } from 'expo-router';
+import { useRecordParams } from '../hooks/useRecordParams';
+import { PesosDB } from '../database/repositories/PesosDB';
 import type { Peso } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
-import React, { useState, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  RefreshControl,
-} from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useRoute, useFocusEffect } from '@react-navigation/native';
-import { COLORS } from '../utils/constants';
-import EmptyState from '../components/EmptyState';
-import { PesosDB } from '../database/PesosDB';
-
+import { dailyWeightChange } from '../utils/measurements';
+import { formatDate } from '../utils/helpers';
+import { ui, palette } from '../theme/tokens';
+import { predictionService, type Prediction } from '../services/predictionService';
+import { API_URL } from '../services/apiClient';
+import ScreenHeading from '../components/ScreenHeading';
+import Button from '../components/Button';
 export default function PesosScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'Pesos'>>();
-  const IdBovino = route.params?.IdBovino || route.params?.idBovino || route.params?.id;
-  const codigo = route.params?.codigo || '';
-  const [pesos, setPesos] = useState<Peso[]>([]);
-  const [refreshing, setRefreshing] = useState(false);
-
-  const loadPesos = useCallback(async () => {
-    try {
-      const data = IdBovino ? await PesosDB.getByBovino(IdBovino) : [];
-      setPesos(data);
-    } catch (e) {
-      console.log('Error loading pesos:', e);
-    }
-  }, [IdBovino]);
-
-  useFocusEffect(
-    useCallback(() => {
-      loadPesos();
-    }, [loadPesos])
-  );
-
-  const onRefresh = async () => {
-    setRefreshing(true);
-    await loadPesos();
-    setRefreshing(false);
-  };
-
-  const latestPeso = pesos.length > 0 ? pesos[0] : null;
-
-  const renderPeso = ({ item }: { item: Peso }) => (
-    <View style={styles.card}>
-      <View style={styles.cardLeft}>
-        <Ionicons name="scale" size={22} color={COLORS.SECONDARY} />
-      </View>
-      <View style={styles.cardContent}>
-        <Text style={styles.cardDate}>{item.FechaPeso}</Text>
-        {item.Observaciones ? (
-          <Text style={styles.cardObs} numberOfLines={1}>{item.Observaciones}</Text>
-        ) : null}
-      </View>
-      <View style={styles.cardRight}>
-        <Text style={styles.cardWeight}>{item.Peso} kg</Text>
-      </View>
-    </View>
-  );
-
-  return (
-    <View style={styles.container}>
-      {/* Latest Weight Header */}
-      {latestPeso && (
-        <View style={styles.latestCard}>
-          <Text style={styles.latestLabel}>Último Peso Registrado</Text>
-          <Text style={styles.latestValue}>{latestPeso.Peso} kg</Text>
-          <Text style={styles.latestDate}>{latestPeso.FechaPeso}</Text>
-        </View>
-      )}
-
-      <Text style={styles.sectionTitle}>
-        Historial de Pesos {codigo ? `- ${codigo}` : ''}
-      </Text>
-
-      <FlatList
-        data={pesos}
-        keyExtractor={(item) => String(item.IdPeso)}
-        renderItem={renderPeso}
-        contentContainerStyle={pesos.length === 0 ? styles.emptyContainer : styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.PRIMARY]} />
-        }
-        ListEmptyComponent={
-          <EmptyState
-            icon="scale"
-            title="Sin registros de peso"
-            message="Registra el primer peso de este bovino"
-          />
-        }
-      />
-
-      <TouchableOpacity
-        style={styles.fab}
-        onPress={() => navigation.navigate('PesoForm', { IdBovino })}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="add" size={28} color={COLORS.WHITE} />
-      </TouchableOpacity>
-    </View>
-  );
+  const { idBovino } = useRecordParams(); const [weights, setWeights] = useState<Peso[]>([]); const [error, setError] = useState(''); const [prediction, setPrediction] = useState<Prediction | null>(null); const [busy, setBusy] = useState(false);
+  useFocusEffect(useCallback(() => { let active = true; Promise.all([PesosDB.getByBovino(idBovino), predictionService.getCached(idBovino)]).then(([w, p]) => { if (active) { setWeights(w); setPrediction(p); } }).catch(() => { if (active) setError('No se pudo cargar el historial.'); }); return () => { active = false; }; }, [idBovino]));
+  const latest = weights[0];
+  const previous = latest ? weights.find(w => w.FechaPeso.slice(0, 10) < latest.FechaPeso.slice(0, 10) && (w.Metodo || null) === (latest.Metodo || null)) : undefined;
+  const gain = latest && previous ? dailyWeightChange(latest, previous) : null;
+  const fetchPrediction = async () => { setBusy(true); try { setPrediction(await predictionService.fetch(idBovino)); setError(''); } catch(e) { setError(e instanceof Error ? e.message : 'No se pudo consultar el pronóstico.'); } finally { setBusy(false); } };
+  return <Screen><ScrollView style={ui.page} contentContainerStyle={ui.content}><ScreenHeading eyebrow="EVOLUCIÓN DEL ANIMAL" title="Lo que nos dice la cinta" subtitle="Las medidas de cada sesión permanecen en su historial." />
+    {latest ? <View style={[ui.card, { backgroundColor: palette.pale, gap: 10 }]}><Text style={ui.eyebrow}>{latest.Metodo ? 'ÚLTIMO PESO ESTIMADO' : 'ÚLTIMO PESO REGISTRADO'}</Text><Text style={ui.title}>{latest.Peso.toFixed(1)} kg</Text><Text style={ui.subtitle}>{formatDate(latest.FechaPeso)}</Text>{gain && previous ? <Text style={[ui.subtitle, { color: palette.green }]}>{gain.kgPerDay >= 0 ? '+' : ''}{gain.kgPerDay.toFixed(2)} kg/día · entre {formatDate(previous.FechaPeso)} y {formatDate(latest.FechaPeso)}</Text> : <Text style={ui.subtitle}>Se necesitan dos sesiones comparables en fechas distintas para calcular la variación diaria.</Text>}</View> : <Text style={ui.subtitle}>Aún no hay mediciones de este bovino.</Text>}
+    <Button label="Registrar medición con cinta" icon="resize-outline" onPress={() => router.push({ pathname: '/pesos/crear', params: { idBovino } })} />
+    <View style={[ui.card, { gap: 10 }]}><Text style={ui.section}>Proyección a 30 días</Text>{prediction ? <><Text style={ui.title}>{prediction.kg.toFixed(1)} kg</Text><Text style={ui.subtitle}>Para {formatDate(prediction.targetDate)} · emitida {formatDate(prediction.issuedAt)}</Text><Text style={ui.subtitle}>Modelo Ridge · {prediction.modelVersion}</Text></> : <Text style={ui.subtitle}>Aún no hay un pronóstico para este bovino.</Text>}{API_URL ? <Button label="Consultar pronóstico" variant="secondary" loading={busy} onPress={() => void fetchPrediction()} /> : null}</View>
+    {error ? <Text accessibilityRole="alert" style={ui.error}>{error}</Text> : null}<Text style={ui.section}>Sesiones guardadas</Text>
+    {weights.map(w => <View style={[ui.card, { gap: 10 }]} key={w.IdPeso}><View style={[ui.row, { justifyContent: 'space-between' }]}><Text style={ui.label}>{formatDate(w.FechaPeso)}</Text><Text style={[ui.section, { fontSize: 19 }]}>{w.Peso.toFixed(1)} kg</Text></View><Text style={ui.eyebrow}>{w.Metodo ? 'ESTIMACIÓN CON CINTA' : 'REGISTRO ANTERIOR'}</Text>{w.Perimetros ? <Text style={ui.subtitle}>Perímetro: {JSON.parse(w.Perimetros).join(' · ')} cm</Text> : null}{w.Longitudes ? <Text style={ui.subtitle}>Longitud: {JSON.parse(w.Longitudes).join(' · ')} cm</Text> : null}<Text style={ui.subtitle}>Por {w.NombreUsuario || 'Responsable sin registrar'}</Text>{w.Observaciones ? <Text style={ui.subtitle}>{w.Observaciones}</Text> : null}</View>)}
+  </ScrollView></Screen>;
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.BACKGROUND,
-  },
-  latestCard: {
-    backgroundColor: COLORS.PRIMARY,
-    margin: 16,
-    marginBottom: 0,
-    borderRadius: 16,
-    padding: 20,
-    alignItems: 'center',
-  },
-  latestLabel: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 14,
-  },
-  latestValue: {
-    color: COLORS.WHITE,
-    fontSize: 42,
-    fontWeight: 'bold',
-    marginVertical: 4,
-  },
-  latestDate: {
-    color: 'rgba(255,255,255,0.8)',
-    fontSize: 13,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: COLORS.TEXT,
-    marginHorizontal: 16,
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  listContent: {
-    padding: 16,
-    paddingBottom: 80,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 16,
-  },
-  card: {
-    backgroundColor: COLORS.WHITE,
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 8,
-    flexDirection: 'row',
-    alignItems: 'center',
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-  },
-  cardLeft: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: COLORS.SECONDARY + '15',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  cardContent: {
-    flex: 1,
-  },
-  cardDate: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: COLORS.TEXT,
-  },
-  cardObs: {
-    fontSize: 12,
-    color: COLORS.TEXT_LIGHT,
-    marginTop: 2,
-  },
-  cardRight: {},
-  cardWeight: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: COLORS.PRIMARY,
-  },
-  fab: {
-    position: 'absolute',
-    bottom: 20,
-    right: 20,
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.PRIMARY,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 6,
-    shadowColor: COLORS.PRIMARY,
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 5,
-  },
-});
-

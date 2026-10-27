@@ -3,18 +3,18 @@
 // Constantes de la aplicación AgroApp
 
 export const Colors = {
-  PRIMARY: '#2E7D32',
-  SECONDARY: '#4CAF50',
-  LIGHT: '#81C784',
-  BACKGROUND: '#F5F5F5',
+  PRIMARY: '#173F35',
+  SECONDARY: '#28634B',
+  LIGHT: '#D6E7A3',
+  BACKGROUND: '#F6F5EF',
   WHITE: '#FFFFFF',
-  TEXT: '#333333',
-  TEXT_LIGHT: '#666666',
-  DANGER: '#D32F2F',
-  WARNING: '#FF9800',
-  INFO: '#1976D2',
+  TEXT: '#20392F',
+  TEXT_LIGHT: '#737D73',
+  DANGER: '#A53832',
+  WARNING: '#A66443',
+  INFO: '#4D716B',
   CARD: '#FFFFFF',
-  BORDER: '#E0E0E0',
+  BORDER: '#E3E6DB',
 };
 
 export const COLORS = Colors;

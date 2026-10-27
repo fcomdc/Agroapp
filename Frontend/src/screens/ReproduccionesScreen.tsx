@@ -1,6 +1,7 @@
+import Screen from '../components/Screen';
+import FilterChip from '../components/FilterChip';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { Reproduccion } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useCallback } from 'react';
 import {
   View,
@@ -13,10 +14,10 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect, useRoute } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
-import { ReproduccionesDB } from '../database/ReproduccionesDB';
+import { ReproduccionesDB } from '../database/repositories/ReproduccionesDB';
 import EmptyState from '../components/EmptyState';
 
 const RESULT_COLORS: Record<string, string> = {
@@ -26,9 +27,9 @@ const RESULT_COLORS: Record<string, string> = {
 };
 
 export default function ReproduccionesScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'Reproducciones'>>();
-  const idBovino = route.params?.IdBovino || route.params?.idBovino;
+  const router = useRouter();
+  const params = useRecordParams();
+  const idBovino = params.idBovino;
   const [reproducciones, setReproducciones] = useState<Reproduccion[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -82,24 +83,10 @@ export default function ReproduccionesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       <View style={styles.filterContainer}>
-        <TouchableOpacity
-          style={[styles.filterBtn, filterMode === 'todas' && styles.filterBtnActive]}
-          onPress={() => setFilterMode('todas')}
-        >
-          <Text style={[styles.filterText, filterMode === 'todas' && styles.filterTextActive]}>
-            Todas
-          </Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={[styles.filterBtn, filterMode === 'prenadas' && styles.filterBtnActive]}
-          onPress={() => setFilterMode('prenadas')}
-        >
-          <Text style={[styles.filterText, filterMode === 'prenadas' && styles.filterTextActive]}>
-            🤰 Preñadas Confirmadas
-          </Text>
-        </TouchableOpacity>
+        <FilterChip label="Todas" selected={filterMode === 'todas'} onPress={() => setFilterMode('todas')} />
+        <FilterChip label="Preñadas" icon="checkmark-circle-outline" selected={filterMode === 'prenadas'} onPress={() => setFilterMode('prenadas')} />
       </View>
 
       {loading && !refreshing ? (
@@ -124,7 +111,9 @@ export default function ReproduccionesScreen() {
               colors={[Colors.PRIMARY]}
             />
           }
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => {
             const resColor = RESULT_COLORS[item.Resultado] || Colors.WARNING;
 
@@ -180,11 +169,11 @@ export default function ReproduccionesScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('ReproduccionForm', { idBovino })}
+        onPress={() => router.push({ pathname: '/reproduccion/crear', params: { idBovino } })}
       >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
-    </View>
+    </Screen>
   );
 }
 
@@ -192,22 +181,13 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   filterContainer: {
     flexDirection: 'row',
-    padding: 12,
-    backgroundColor: '#FFF',
+    padding: 16,
+    gap: 10,
+    flexWrap: 'wrap',
+    backgroundColor: Colors.BACKGROUND,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#E3E6DB',
   },
-  filterBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginHorizontal: 4,
-    backgroundColor: '#F0F0F0',
-  },
-  filterBtnActive: { backgroundColor: Colors.PRIMARY },
-  filterText: { fontWeight: '600', color: Colors.TEXT_LIGHT },
-  filterTextActive: { color: '#FFF' },
   card: {
     backgroundColor: '#FFF',
     borderRadius: 12,
@@ -230,7 +210,7 @@ const styles = StyleSheet.create({
     marginTop: 12,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: '#F6F5EF',
   },
   dateLabel: { fontSize: 11, color: Colors.TEXT_LIGHT, textTransform: 'uppercase' },
   dateVal: { fontSize: 13, color: Colors.TEXT, marginTop: 2 },

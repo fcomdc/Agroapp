@@ -1,28 +1,28 @@
+import FormScreen from '../components/FormScreen';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { Bovino } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useEffect } from 'react';
 import {
+  ScrollView,
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors, TipoReproduccion, ResultadoReproduccion } from '../utils/constants';
 import { getCurrentDate, isValidDate, parseLocalDate } from '../utils/helpers';
-import { ReproduccionesDB } from '../database/ReproduccionesDB';
-import { BovinosDB } from '../database/BovinosDB';
+import { ReproduccionesDB } from '../database/repositories/ReproduccionesDB';
+import { BovinosDB } from '../database/repositories/BovinosDB';
 import { useAuth } from '../context/AuthContext';
 
 export default function ReproduccionFormScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'ReproduccionForm'>>();
-  const idBovino = route.params?.idBovino || route.params?.IdBovino;
+  const router = useRouter();
+  const params = useRecordParams();
+  const idBovino = params.idBovino;
   const { user } = useAuth();
 
   const [hembras, setHembras] = useState<Bovino[]>([]);
@@ -63,12 +63,12 @@ export default function ReproduccionFormScreen() {
       return;
     }
     if (!fechaServicio.trim()) {
-      Alert.alert('Validación', 'La fecha de servicio es obligatoria (YYYY-MM-DD)');
+      Alert.alert('Validación', 'La fecha de servicio es obligatoria (AAAA-MM-DD)');
       return;
     }
 
     if ((fechaServicio.trim() && !isValidDate(fechaServicio.trim())) || (fechaConfirmacion.trim() && !isValidDate(fechaConfirmacion.trim())) || (fechaProbableParto.trim() && !isValidDate(fechaProbableParto.trim()))) {
-      Alert.alert('Validación', 'Ingrese fechas válidas en formato YYYY-MM-DD');
+      Alert.alert('Validación', 'Ingrese fechas válidas en formato AAAA-MM-DD');
       return;
     }
     try {
@@ -85,9 +85,7 @@ export default function ReproduccionFormScreen() {
         IdUsuario: user?.IdUsuario || user?.id || null,
       });
 
-      Alert.alert('Éxito', 'Registro reproductivo guardado correctamente', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      router.back();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudo guardar la reproducción');
@@ -97,7 +95,7 @@ export default function ReproduccionFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.sectionTitle}>Hembra (Vaca / Vaquilla) *</Text>
       {hembras.length === 0 ? (
         <Text style={styles.emptyWarning}>No hay hembras activas registradas en el hato.</Text>
@@ -136,10 +134,10 @@ export default function ReproduccionFormScreen() {
         })}
       </View>
 
-      <Text style={styles.label}>Fecha de Servicio (YYYY-MM-DD) *</Text>
+      <Text style={styles.label}>Fecha de Servicio (AAAA-MM-DD) *</Text>
       <TextInput
         style={styles.input}
-        placeholder="YYYY-MM-DD"
+        placeholder="AAAA-MM-DD"
         value={fechaServicio}
         onChangeText={value => { setFechaServicio(value); setFechaProbableParto(null); }}
       />
@@ -162,10 +160,10 @@ export default function ReproduccionFormScreen() {
 
       {resultado === 'Preñada' && (
         <>
-          <Text style={styles.label}>Fecha Confirmación Palpación / Eco (YYYY-MM-DD)</Text>
+          <Text style={styles.label}>Fecha Confirmación Palpación / Eco (AAAA-MM-DD)</Text>
           <TextInput
             style={styles.input}
-            placeholder="YYYY-MM-DD"
+            placeholder="AAAA-MM-DD"
             value={fechaConfirmacion}
             onChangeText={setFechaConfirmacion}
           />
@@ -173,7 +171,7 @@ export default function ReproduccionFormScreen() {
           <Text style={styles.label}>Fecha Probable de Parto (+283 días aprox)</Text>
           <TextInput
             style={styles.input}
-            placeholder="YYYY-MM-DD"
+            placeholder="AAAA-MM-DD"
             value={fechaProbableParto}
             onChangeText={setFechaProbableParto}
           />
@@ -201,7 +199,7 @@ export default function ReproduccionFormScreen() {
           <Text style={styles.submitBtnText}>Guardar Registro Reproductivo</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
@@ -209,7 +207,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.TEXT, marginBottom: 8 },
   emptyWarning: { fontSize: 13, color: Colors.DANGER, marginBottom: 12 },
-  pickerRow: { flexDirection: 'row', marginBottom: 16 },
+  pickerRow: { flexGrow: 0, flexShrink: 0, flexDirection: 'row', marginBottom: 16 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -246,7 +244,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 14,
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
   submitBtn: {
     backgroundColor: Colors.PRIMARY,
     padding: 16,

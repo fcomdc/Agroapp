@@ -1,25 +1,28 @@
+import { useAuth } from '../context/AuthContext';
+import { can } from '../utils/permissions';
+import FormScreen from '../components/FormScreen';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { ReporteSalud } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useRoute, useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { formatDateTime } from '../utils/helpers';
-import { ReportesSaludDB } from '../database/ReportesSaludDB';
+import { ReportesSaludDB } from '../database/repositories/ReportesSaludDB';
 
 export default function ReporteSaludDetailScreen() {
-  const route = useRoute<RouteProp<RootStackParamList, 'ReporteSaludDetail'>>();
-  const idReporte = route.params?.idReporte;
+  const params = useRecordParams();
+  const role = useAuth(s => s.user?.Rol);
+  const canDiagnose = can(role, 'diagnose');
+  const idReporte = params.id;
 
   const [reporte, setReporte] = useState<ReporteSalud | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +52,7 @@ export default function ReporteSaludDetailScreen() {
   }, [loadData]));
 
   const handleAtender = async () => {
+    if (!canDiagnose || saving) return;
     if (!diagnostico.trim()) {
       Alert.alert('Validación', 'Debe registrar el diagnóstico veterinario');
       return;
@@ -90,7 +94,7 @@ export default function ReporteSaludDetailScreen() {
   const isAtendido = reporte.Estado === 'Atendido' || reporte.Estado === 'Cerrado';
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       {/* Tarjeta de Encabezado */}
       <View style={styles.headerCard}>
         <View style={styles.titleRow}>
@@ -125,7 +129,7 @@ export default function ReporteSaludDetailScreen() {
       {/* Sección Médica */}
       <View style={styles.card}>
         <Text style={styles.sectionHeading}>
-          {isAtendido ? 'Atención Veterinaria Realizada' : 'Registrar Diagnóstico Veterinario'}
+          {isAtendido ? 'Atención veterinaria realizada' : 'Revisión veterinaria pendiente'}
         </Text>
 
         {isAtendido ? (
@@ -142,7 +146,7 @@ export default function ReporteSaludDetailScreen() {
               </Text>
             )}
           </View>
-        ) : (
+        ) : canDiagnose ? (
           <View style={{ marginTop: 8 }}>
             <Text style={styles.label}>Diagnóstico Profesional *</Text>
             <TextInput
@@ -176,9 +180,9 @@ export default function ReporteSaludDetailScreen() {
               )}
             </TouchableOpacity>
           </View>
-        )}
+        ) : <Text style={styles.bodyText}>El veterinario de la finca registrará el diagnóstico y el tratamiento.</Text>}
       </View>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
@@ -207,14 +211,14 @@ const styles = StyleSheet.create({
   bodyText: { fontSize: 14, color: Colors.TEXT, lineHeight: 20 },
   label: { fontSize: 14, fontWeight: '600', color: Colors.TEXT, marginTop: 8, marginBottom: 4 },
   input: {
-    backgroundColor: '#FAFAFA',
+    backgroundColor: '#F6F5EF',
     borderWidth: 1,
     borderColor: '#DDD',
     borderRadius: 8,
     padding: 10,
     fontSize: 14,
   },
-  textArea: { height: 75, textAlignVertical: 'top' },
+  textArea: { minHeight: 75, textAlignVertical: 'top' },
   dateAtendido: { fontSize: 12, color: Colors.PRIMARY, fontStyle: 'italic', marginTop: 12 },
   btnAtender: {
     backgroundColor: Colors.PRIMARY,

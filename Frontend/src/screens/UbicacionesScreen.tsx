@@ -1,3 +1,5 @@
+import Screen from '../components/Screen';
+import { useAuth } from '../context/AuthContext';
 import type { Ubicacion } from '../types/models';
 import React, { useState, useCallback } from 'react';
 import {
@@ -11,13 +13,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
-import { UbicacionesDB } from '../database/UbicacionesDB';
+import { UbicacionesDB } from '../database/repositories/UbicacionesDB';
 import EmptyState from '../components/EmptyState';
 
 export default function UbicacionesScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
+  const isAdmin = useAuth(s => s.user?.Rol === 'Administrador');
   const [ubicaciones, setUbicaciones] = useState<Ubicacion[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -43,6 +46,7 @@ export default function UbicacionesScreen() {
   );
 
   const handleDelete = (idUbicacion: number) => {
+    if (!isAdmin) return;
     Alert.alert(
       'Desactivar Ubicación',
       '¿Desea dar de baja esta ubicación?',
@@ -65,7 +69,7 @@ export default function UbicacionesScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       {loading && !refreshing ? (
         <ActivityIndicator size="large" color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : ubicaciones.length === 0 ? (
@@ -88,7 +92,9 @@ export default function UbicacionesScreen() {
               colors={[Colors.PRIMARY]}
             />
           }
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -99,15 +105,15 @@ export default function UbicacionesScreen() {
                   <Text style={styles.title}>{item.Nombre}</Text>
                   <Text style={styles.tipoText}>{item.Tipo}</Text>
                 </View>
-                <TouchableOpacity
+                {isAdmin && <><TouchableOpacity
                   style={{ marginRight: 10 }}
-                  onPress={() => navigation.navigate('UbicacionForm', { ubicacion: item })}
+                  onPress={() => router.push({ pathname: '/ubicaciones/editar', params: { id: item.IdUbicacion } })}
                 >
                   <Ionicons name="create-outline" size={22} color={Colors.PRIMARY} />
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => handleDelete(item.IdUbicacion)}>
                   <Ionicons name="trash-outline" size={22} color={Colors.DANGER} />
-                </TouchableOpacity>
+                </TouchableOpacity></>}
               </View>
 
               {item.Descripcion ? (
@@ -118,13 +124,13 @@ export default function UbicacionesScreen() {
         />
       )}
 
-      <TouchableOpacity
+      {isAdmin && <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('UbicacionForm')}
+        onPress={() => router.push('/ubicaciones/crear')}
       >
         <Ionicons name="add" size={28} color="#FFF" />
-      </TouchableOpacity>
-    </View>
+      </TouchableOpacity>}
+    </Screen>
   );
 }
 

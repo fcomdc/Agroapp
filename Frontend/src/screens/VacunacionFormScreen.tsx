@@ -1,29 +1,29 @@
+import FormScreen from '../components/FormScreen';
+import { useRecordParams } from '../hooks/useRecordParams';
 import type { Bovino } from '../types/models';
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
 import React, { useState, useEffect } from 'react';
 import {
+  ScrollView,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { getCurrentDate, isValidDate } from '../utils/helpers';
-import { VacunacionesDB } from '../database/VacunacionesDB';
-import { BovinosDB } from '../database/BovinosDB';
+import { VacunacionesDB } from '../database/repositories/VacunacionesDB';
+import { BovinosDB } from '../database/repositories/BovinosDB';
 import { useAuth } from '../context/AuthContext';
 
 export default function VacunacionFormScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'VacunacionForm'>>();
+  const router = useRouter();
+  const params = useRecordParams();
   const { user } = useAuth();
 
-  const idBovinoParam = route.params?.idBovino || route.params?.IdBovino;
+  const idBovinoParam = params.idBovino;
 
   const [bovinos, setBovinos] = useState<Bovino[]>([]);
   const [selectedBovinoId, setSelectedBovinoId] = useState<number | null>(idBovinoParam || null);
@@ -56,7 +56,7 @@ export default function VacunacionFormScreen() {
       return;
     }
     if (!fechaAplicacion.trim()) {
-      Alert.alert('Validación', 'La fecha de aplicación es requerida (YYYY-MM-DD)');
+      Alert.alert('Validación', 'La fecha de aplicación es requerida (AAAA-MM-DD)');
       return;
     }
     if (!dosis.trim()) {
@@ -65,7 +65,7 @@ export default function VacunacionFormScreen() {
     }
 
     if ((fechaAplicacion.trim() && !isValidDate(fechaAplicacion.trim())) || (proximaAplicacion.trim() && !isValidDate(proximaAplicacion.trim()))) {
-      Alert.alert('Validación', 'Ingrese fechas válidas en formato YYYY-MM-DD');
+      Alert.alert('Validación', 'Ingrese fechas válidas en formato AAAA-MM-DD');
       return;
     }
     try {
@@ -80,9 +80,7 @@ export default function VacunacionFormScreen() {
         Observaciones: observaciones.trim() || null,
       });
 
-      Alert.alert('Éxito', 'Vacuna registrada correctamente', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      router.back();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudo guardar la vacunación');
@@ -92,8 +90,9 @@ export default function VacunacionFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.sectionTitle}>Bovino *</Text>
+      {bovinos.length === 0 && <Text style={{ color: Colors.TEXT_LIGHT, marginBottom: 16 }}>No hay bovinos activos. Primero registra una ficha de ganado.</Text>}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerRow}>
         {bovinos.map((b) => {
           const isSelected = selectedBovinoId === b.IdBovino;
@@ -127,18 +126,18 @@ export default function VacunacionFormScreen() {
         onChangeText={setLote}
       />
 
-      <Text style={styles.label}>Fecha de Aplicación (YYYY-MM-DD) *</Text>
+      <Text style={styles.label}>Fecha de Aplicación (AAAA-MM-DD) *</Text>
       <TextInput
         style={styles.input}
-        placeholder="YYYY-MM-DD"
+        placeholder="AAAA-MM-DD"
         value={fechaAplicacion}
         onChangeText={setFechaAplicacion}
       />
 
-      <Text style={styles.label}>Próxima Aplicación / Refuerzo (YYYY-MM-DD)</Text>
+      <Text style={styles.label}>Próxima Aplicación / Refuerzo (AAAA-MM-DD)</Text>
       <TextInput
         style={styles.input}
-        placeholder="Opcional: YYYY-MM-DD"
+        placeholder="Opcional: AAAA-MM-DD"
         value={proximaAplicacion}
         onChangeText={setProximaAplicacion}
       />
@@ -164,14 +163,14 @@ export default function VacunacionFormScreen() {
           <Text style={styles.submitBtnText}>Guardar Vacunación</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.TEXT, marginBottom: 8 },
-  pickerRow: { flexDirection: 'row', marginBottom: 16 },
+  pickerRow: { flexGrow: 0, flexShrink: 0, flexDirection: 'row', marginBottom: 16 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -194,7 +193,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 14,
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
   submitBtn: {
     backgroundColor: Colors.PRIMARY,
     padding: 16,

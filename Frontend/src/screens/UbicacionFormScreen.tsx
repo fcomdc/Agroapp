@@ -1,31 +1,37 @@
-import type { RouteProp } from '@react-navigation/native';
-import type { RootStackParamList } from '../types/navigation';
-import React, { useState } from 'react';
+import FormScreen from '../components/FormScreen';
+import { useRecordParams } from '../hooks/useRecordParams';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors } from '../utils/constants';
-import { UbicacionesDB } from '../database/UbicacionesDB';
+import { UbicacionesDB } from '../database/repositories/UbicacionesDB';
 
 const TIPOS_UBICACION = ['Potrero', 'Corral', 'Establo', 'Maternidad', 'Enfermería', 'Lote Pastura'];
 
 export default function UbicacionFormScreen() {
-  const navigation = useNavigation();
-  const route = useRoute<RouteProp<RootStackParamList, 'UbicacionForm'>>();
-  const ubicacionToEdit = route.params?.ubicacion;
+  const router = useRouter();
+  const params = useRecordParams();
+  const ubicacionToEdit = params.id > 0;
 
-  const [nombre, setNombre] = useState(ubicacionToEdit?.Nombre || '');
-  const [tipo, setTipo] = useState(ubicacionToEdit?.Tipo || 'Potrero');
-  const [descripcion, setDescripcion] = useState(ubicacionToEdit?.Descripcion || '');
+  const [nombre, setNombre] = useState('');
+  const [tipo, setTipo] = useState('Potrero');
+  const [descripcion, setDescripcion] = useState('');
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!params.id) return;
+    UbicacionesDB.getById(params.id).then(record => {
+      if (record) { setNombre(record.Nombre); setTipo(record.Tipo || 'Potrero'); setDescripcion(record.Descripcion || ''); }
+    }).catch(() => Alert.alert('Error', 'No se pudo cargar la ubicación.'));
+  }, [params.id]);
 
   const handleSave = async () => {
     if (!nombre.trim()) {
@@ -36,14 +42,12 @@ export default function UbicacionFormScreen() {
     try {
       setLoading(true);
       if (ubicacionToEdit) {
-        await UbicacionesDB.update(ubicacionToEdit.IdUbicacion, {
+        await UbicacionesDB.update(params.id, {
           Nombre: nombre.trim(),
           Tipo: tipo,
           Descripcion: descripcion.trim() || null,
         });
-        Alert.alert('Éxito', 'Ubicación actualizada correctamente', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        router.back();
       } else {
         await UbicacionesDB.create({
           Nombre: nombre.trim(),
@@ -51,9 +55,7 @@ export default function UbicacionFormScreen() {
           Descripcion: descripcion.trim() || null,
           Estado: 1,
         });
-        Alert.alert('Éxito', 'Ubicación registrada correctamente', [
-          { text: 'OK', onPress: () => navigation.goBack() },
-        ]);
+        router.back();
       }
     } catch (err) {
       console.error(err);
@@ -64,7 +66,7 @@ export default function UbicacionFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.label}>Nombre de la Ubicación / Lote *</Text>
       <TextInput
         style={styles.input}
@@ -114,7 +116,7 @@ export default function UbicacionFormScreen() {
           </Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 14,
   },
-  textArea: { height: 80, textAlignVertical: 'top' },
+  textArea: { minHeight: 80, textAlignVertical: 'top' },
   tiposRow: { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 14 },
   tipoChip: {
     paddingHorizontal: 12,

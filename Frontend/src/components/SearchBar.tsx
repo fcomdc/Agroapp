@@ -44,7 +44,7 @@ const SearchBar = ({
         returnKeyType="search"
       />
       {value.length > 0 && (
-        <TouchableOpacity onPress={handleClear} style={styles.clearButton}>
+        <TouchableOpacity onPress={handleClear} style={[styles.clearButton, { minHeight: 44, minWidth: 40, justifyContent: 'center', alignItems: 'center' }]} accessibilityLabel="Limpiar búsqueda" accessibilityRole="button">
           <Ionicons name="close-circle" size={20} color={Colors.TEXT_LIGHT} />
         </TouchableOpacity>
       )}
@@ -57,15 +57,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: Colors.WHITE,
-    borderRadius: 10,
-    marginHorizontal: 16,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.BORDER,
+    marginHorizontal: 22,
     marginVertical: 10,
     paddingHorizontal: 12,
-    height: 44,
-    elevation: 2,
+    minHeight: 52,
+    elevation: 0,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
+    shadowOpacity: 0,
     shadowRadius: 2,
   },
   searchIcon: {
@@ -73,6 +75,8 @@ const styles = StyleSheet.create({
   },
   input: {
     flex: 1,
+    minWidth: 0,
+    minHeight: 48,
     fontSize: 15,
     color: Colors.TEXT,
     padding: 0,

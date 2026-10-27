@@ -1,3 +1,4 @@
+import Screen from '../components/Screen';
 import type { Parto } from '../types/models';
 import React, { useState, useCallback } from 'react';
 import {
@@ -11,14 +12,14 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
-import { PartosDB } from '../database/PartosDB';
+import { PartosDB } from '../database/repositories/PartosDB';
 import EmptyState from '../components/EmptyState';
 
 export default function PartosScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [partos, setPartos] = useState<Parto[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -66,7 +67,7 @@ export default function PartosScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       {loading && !refreshing ? (
         <ActivityIndicator size="large" color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : partos.length === 0 ? (
@@ -89,7 +90,9 @@ export default function PartosScreen() {
               colors={[Colors.PRIMARY]}
             />
           }
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => (
             <View style={styles.card}>
               <View style={styles.cardHeader}>
@@ -124,11 +127,11 @@ export default function PartosScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('PartoForm')}
+        onPress={() => router.push('/partos/crear')}
       >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
-    </View>
+    </Screen>
   );
 }
 
@@ -150,7 +153,7 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#4CAF50',
+    backgroundColor: '#28634B',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -162,7 +165,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: '#F6F5EF',
   },
   dateText: { fontSize: 12, color: Colors.PRIMARY, fontWeight: '600' },
   userText: { fontSize: 12, color: Colors.TEXT_LIGHT },

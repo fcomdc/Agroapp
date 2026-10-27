@@ -1,3 +1,5 @@
+import { migrateDatabase } from './migrations';
+import { mutationTarget, makeOperation, insertOperationSql, operationValues } from './mutations';
 import type { SQLiteBindValue } from 'expo-sqlite';
 import type { Database, StorageRow, WriteResult } from '../types/database';
 import { getNativeSQLite } from './NativeSQLite';
@@ -8,8 +10,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 // ============================================================================
 
 const STORAGE_PREFIX = '@AgroApp:table:';
+const SNAPSHOT_KEY = STORAGE_PREFIX + 'snapshot-v2';
 
 const TABLES_CONFIG: Record<string, { pk: string; autoInc: number }> = {
+  OperacionesPendientes: { pk: 'IdOperacion', autoInc: 1 },
   Usuarios: { pk: 'IdUsuario', autoInc: 1 },
   Ubicaciones: { pk: 'IdUbicacion', autoInc: 1 },
   Bovinos: { pk: 'IdBovino', autoInc: 1 },
@@ -28,6 +32,7 @@ class AsyncStorageDatabase implements Database {
   loadingPromise: Promise<void> | null;
   existingTables: Set<string>;
   writeQueue: Promise<unknown>;
+  isWriting = false;
   constructor() {
     this.memoryCache = {};
     this.isLoaded = false;
@@ -44,6 +49,16 @@ class AsyncStorageDatabase implements Database {
   }
 
   async loadTables() {
+    const snapshot = await AsyncStorage.getItem(SNAPSHOT_KEY);
+    if (snapshot) {
+      const parsed = JSON.parse(snapshot);
+      for (const name of Object.keys(TABLES_CONFIG)) {
+        this.memoryCache[name] = parsed[name] || [];
+        if (parsed[name]) this.existingTables.add(name);
+      }
+      this.isLoaded = true;
+      return;
+    }
     for (const tableName of Object.keys(TABLES_CONFIG)) {
       try {
         const raw = await AsyncStorage.getItem(STORAGE_PREFIX + tableName);
@@ -63,14 +78,10 @@ class AsyncStorageDatabase implements Database {
     this.isLoaded = true;
   }
 
-  async saveTable(tableName: string) {
-    try {
-      const data = this.memoryCache[tableName] || [];
-      await AsyncStorage.setItem(STORAGE_PREFIX + tableName, JSON.stringify(data));
-    } catch (e) {
-      console.error(`Error guardando tabla ${tableName}:`, e);
-      throw e;
-    }
+  async saveTable(_tableName: string) {
+    if (this.isWriting) return;
+    // One write commits both domain data and its pending operation on the web.
+    await AsyncStorage.setItem(SNAPSHOT_KEY, JSON.stringify(this.memoryCache));
   }
 
   getTable(name: string) {
@@ -104,52 +115,6 @@ class AsyncStorageDatabase implements Database {
       await this.saveTable('Usuarios');
     }
 
-    // Datos de muestra iniciales si no hay ubicaciones
-    const ubicaciones = this.memoryCache['Ubicaciones'] || [];
-    if (!this.existingTables.has('Ubicaciones') && ubicaciones.length === 0) {
-      ubicaciones.push(
-        { IdUbicacion: 1, Nombre: 'Potrero La Esperanza', Tipo: 'Potrero', Descripcion: 'Pasto estrella con sombra', Estado: 1 },
-        { IdUbicacion: 2, Nombre: 'Corral de Manejo #1', Tipo: 'Corral', Descripcion: 'Corral con embudo y báscula', Estado: 1 }
-      );
-      this.memoryCache['Ubicaciones'] = ubicaciones;
-      await this.saveTable('Ubicaciones');
-    }
-
-    // Bovinos iniciales de muestra si no hay
-    const bovinos = this.memoryCache['Bovinos'] || [];
-    if (!this.existingTables.has('Bovinos') && bovinos.length === 0) {
-      bovinos.push(
-        {
-          IdBovino: 1,
-          Codigo: 'BOV-001',
-          Nombre: 'Esperanza',
-          Sexo: 'H',
-          FechaNacimiento: '2022-04-10',
-          Raza: 'Gyr Lechero',
-          Color: 'Blanco / Rojo',
-          IdUbicacion: 1,
-          Estado: 'Activo',
-          Observaciones: 'Vaca lechera reproductora',
-          FechaRegistro: new Date().toISOString(),
-        },
-        {
-          IdBovino: 2,
-          Codigo: 'BOV-002',
-          Nombre: 'Toro Relámpago',
-          Sexo: 'M',
-          FechaNacimiento: '2021-08-15',
-          Raza: 'Brahman Gris',
-          Color: 'Gris Claro',
-          IdUbicacion: 1,
-          Estado: 'Activo',
-          Observaciones: 'Semental reproductor',
-          FechaRegistro: new Date().toISOString(),
-        }
-      );
-      this.memoryCache['Bovinos'] = bovinos;
-      await this.saveTable('Bovinos');
-    }
-
     return;
   }
 
@@ -158,8 +123,23 @@ class AsyncStorageDatabase implements Database {
       await this.loadAll();
       const before = JSON.parse(JSON.stringify(this.memoryCache));
       try {
-        return await this.executeRun(sql, params);
+        this.isWriting = true;
+        const result = await this.executeRun(sql, params);
+        const target = mutationTarget(sql);
+        if (target && result.changes > 0) {
+          const id = target.action === 'create' ? result.lastInsertRowId : Number(params[params.length - 1]);
+          const whereField = sql.match(/WHERE\s+(\w+)\s*=\s*\?/i)?.[1] || target.key;
+          const rows = target.action === 'delete'
+            ? (before[target.entity] as StorageRow[]).filter(r => String(r[whereField]) === String(params[0]))
+            : [this.memoryCache[target.entity]?.find(r => Number(r[target.key]) === id) || { [target.key]: id }];
+          this.memoryCache.OperacionesPendientes ||= [];
+          for (const row of rows) this.memoryCache.OperacionesPendientes.push({ ...makeOperation(target.entity, target.action, Number(row[target.key]), row) });
+        }
+        this.isWriting = false;
+        await this.saveTable('');
+        return result;
       } catch (error) {
+        this.isWriting = false;
         this.memoryCache = before;
         throw error;
       }
@@ -432,14 +412,32 @@ const openDatabase = async (): Promise<Database> => {
       await sqliteDb.execAsync('PRAGMA journal_mode = WAL;');
       const nativeDb: Database = {
         execAsync: sql => sqliteDb.execAsync(sql),
-        runAsync: (sql, params = []) => sqliteDb.runAsync(sql, params),
+        runAsync: async (sql, params = []) => {
+          const target = mutationTarget(sql);
+          if (!target) return sqliteDb.runAsync(sql, params);
+          let result: WriteResult = { changes: 0, lastInsertRowId: 0 };
+          await sqliteDb.withExclusiveTransactionAsync(async tx => {
+            const deleted = target.action === 'delete'
+              ? await tx.getAllAsync<StorageRow>(sql.replace(/^DELETE\s+FROM/i, 'SELECT * FROM'), params) : [];
+            result = await tx.runAsync(sql, params);
+            if (!result.changes) return;
+            const id = target.action === 'create' ? result.lastInsertRowId : Number(params[params.length - 1]);
+            const row = target.action !== 'delete' ? await tx.getFirstAsync<StorageRow>(`SELECT * FROM ${target.entity} WHERE ${target.key} = ?`, [id]) : null;
+            const rows = target.action === 'delete' ? deleted : [row || { [target.key]: id }];
+            for (const record of rows) {
+              const operation = makeOperation(target.entity, target.action, Number(record[target.key]), record);
+              await tx.runAsync(insertOperationSql, operationValues(operation));
+            }
+          });
+          return result;
+        },
         getAllAsync: (sql, params = []) => sqliteDb.getAllAsync(sql, params),
         getFirstAsync: (sql, params = []) => sqliteDb.getFirstAsync(sql, params),
       };
 
       return nativeDb;
     } catch (e) {
-      console.warn('Fallo al abrir SQLite nativo, usando fallback:', e instanceof Error ? e.message : String(e));
+      throw new Error('No se pudo abrir SQLite. Los datos existentes se conservan.', { cause: e });
     }
   }
 
@@ -602,6 +600,7 @@ const initializeDatabase = async (): Promise<Database> => {
       INSERT OR IGNORE INTO Usuarios (IdUsuario, NombreCompleto, Usuario, Contrasena, Rol, Estado)
       VALUES (1, 'Administrador del Sistema', 'admin', 'admin123', 'Administrador', 1);
     `);
+    await migrateDatabase(db);
   } else {
     // Inicializar fallback
     await db.execAsync('');

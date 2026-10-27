@@ -18,6 +18,8 @@ export default function PickerSelect<T extends string | number | null>({ options
             key={String(opt.value)}
             style={[styles.optionBtn, isSelected && styles.optionBtnActive]}
             onPress={() => onValueChange(opt.value)}
+            accessibilityRole="button"
+            accessibilityState={{ selected: isSelected }}
             activeOpacity={0.7}
           >
             <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
@@ -38,12 +40,14 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   optionBtn: {
+    maxWidth: '100%',
+    flexShrink: 1,
     paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: 8,
+    paddingVertical: 12,
+    borderRadius: 12,
     backgroundColor: '#FFF',
     borderWidth: 1,
-    borderColor: '#DDD',
+    borderColor: Colors.BORDER,
     marginRight: 8,
     marginBottom: 8,
   },

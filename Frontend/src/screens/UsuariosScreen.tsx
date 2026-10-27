@@ -1,3 +1,4 @@
+import Screen from '../components/Screen';
 import type { Usuario } from '../types/models';
 import React, { useState, useCallback } from 'react';
 import {
@@ -11,20 +12,20 @@ import {
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors } from '../utils/constants';
 import { formatDate } from '../utils/helpers';
-import { UsuariosDB } from '../database/UsuariosDB';
+import { UsuariosDB } from '../database/repositories/UsuariosDB';
 import EmptyState from '../components/EmptyState';
 
 const ROL_COLORS: Record<string, string> = {
   Administrador: '#D32F2F',
-  Veterinario: '#1976D2',
+  Veterinario: '#4D716B',
   Trabajador: '#388E3C',
 };
 
 export default function UsuariosScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -77,7 +78,7 @@ export default function UsuariosScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <Screen style={styles.container}>
       {loading && !refreshing ? (
         <ActivityIndicator size="large" color={Colors.PRIMARY} style={{ marginTop: 40 }} />
       ) : usuarios.length === 0 ? (
@@ -100,7 +101,9 @@ export default function UsuariosScreen() {
               colors={[Colors.PRIMARY]}
             />
           }
-          contentContainerStyle={{ padding: 16 }}
+          contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
           renderItem={({ item }) => {
             const rolColor = ROL_COLORS[item.Rol] || Colors.PRIMARY;
             const isActivo = item.Estado === 1;
@@ -142,11 +145,11 @@ export default function UsuariosScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => navigation.navigate('UsuarioForm')}
+        onPress={() => router.push('/usuarios/crear')}
       >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
-    </View>
+    </Screen>
   );
 }
 
@@ -178,7 +181,7 @@ const styles = StyleSheet.create({
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
-    borderTopColor: '#F5F5F5',
+    borderTopColor: '#F6F5EF',
   },
   dateText: { fontSize: 12, color: Colors.TEXT_LIGHT },
   fab: {

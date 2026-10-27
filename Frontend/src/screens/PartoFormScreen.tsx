@@ -1,25 +1,26 @@
+import FormScreen from '../components/FormScreen';
 import type { Bovino } from '../types/models';
 import React, { useState, useEffect } from 'react';
 import {
+  ScrollView,
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TextInput,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useRouter } from 'expo-router';
 import { Colors, TipoParto } from '../utils/constants';
 import { getCurrentDate, isValidDate } from '../utils/helpers';
-import { PartosDB } from '../database/PartosDB';
-import { CriasPartoDB } from '../database/CriasPartoDB';
-import { BovinosDB } from '../database/BovinosDB';
+import { PartosDB } from '../database/repositories/PartosDB';
+import { CriasPartoDB } from '../database/repositories/CriasPartoDB';
+import { BovinosDB } from '../database/repositories/BovinosDB';
 import { useAuth } from '../context/AuthContext';
 
 export default function PartoFormScreen() {
-  const navigation = useNavigation();
+  const router = useRouter();
   const { user } = useAuth();
 
   const [madres, setMadres] = useState<Bovino[]>([]);
@@ -58,7 +59,7 @@ export default function PartoFormScreen() {
       return;
     }
     if (!fechaParto.trim()) {
-      Alert.alert('Validación', 'La fecha de parto es requerida (YYYY-MM-DD)');
+      Alert.alert('Validación', 'La fecha de parto es requerida (AAAA-MM-DD)');
       return;
     }
 
@@ -73,7 +74,7 @@ export default function PartoFormScreen() {
       return;
     }
     if ((fechaParto.trim() && !isValidDate(fechaParto.trim()))) {
-      Alert.alert('Validación', 'Ingrese fechas válidas en formato YYYY-MM-DD');
+      Alert.alert('Validación', 'Ingrese fechas válidas en formato AAAA-MM-DD');
       return;
     }
     try {
@@ -99,9 +100,7 @@ export default function PartoFormScreen() {
         });
       }
 
-      Alert.alert('Éxito', 'Parto y cría registrados con éxito', [
-        { text: 'OK', onPress: () => navigation.goBack() },
-      ]);
+      router.back();
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudo guardar el registro del parto');
@@ -111,7 +110,7 @@ export default function PartoFormScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
       <Text style={styles.sectionTitle}>Madre *</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerRow}>
         {madres.map((b) => {
@@ -130,10 +129,10 @@ export default function PartoFormScreen() {
         })}
       </ScrollView>
 
-      <Text style={styles.label}>Fecha del Parto (YYYY-MM-DD) *</Text>
+      <Text style={styles.label}>Fecha del Parto (AAAA-MM-DD) *</Text>
       <TextInput
         style={styles.input}
-        placeholder="YYYY-MM-DD"
+        placeholder="AAAA-MM-DD"
         value={fechaParto}
         onChangeText={setFechaParto}
       />
@@ -246,14 +245,14 @@ export default function PartoFormScreen() {
           <Text style={styles.submitBtnText}>Guardar Parto</Text>
         )}
       </TouchableOpacity>
-    </ScrollView>
+    </FormScreen>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.BACKGROUND },
   sectionTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.TEXT, marginBottom: 8 },
-  pickerRow: { flexDirection: 'row', marginBottom: 16 },
+  pickerRow: { flexGrow: 0, flexShrink: 0, flexDirection: 'row', marginBottom: 16 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
@@ -290,14 +289,14 @@ const styles = StyleSheet.create({
     fontSize: 15,
     marginBottom: 14,
   },
-  textArea: { height: 75, textAlignVertical: 'top' },
+  textArea: { minHeight: 75, textAlignVertical: 'top' },
   criaCard: {
     backgroundColor: '#FFF',
     borderRadius: 12,
     padding: 16,
     marginVertical: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#E3E6DB',
   },
   criaHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   criaTitle: { fontSize: 15, fontWeight: 'bold', color: Colors.PRIMARY },
