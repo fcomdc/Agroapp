@@ -1,6 +1,6 @@
 # AgroApp
 
-Aplicación móvil de la finca El Esfuerzo, Rivas, Nicaragua. Esta actualización reorganiza el frontend con Expo Router y conserva las funciones de registro bovino, salud, vacunas, reproducción, partos, ubicaciones y usuarios. La interfaz está en español y usa una misma paleta de verdes, crema y tonos tierra.
+Aplicación móvil de la finca El Esfuerzo, Rivas, Nicaragua. Incluye registro bovino, salud, vacunas, reproducción, partos, ubicaciones y usuarios. La interfaz está en español y usa una paleta de verdes, crema y tonos tierra.
 
 ## Abrir el proyecto
 
@@ -11,6 +11,20 @@ cd Frontend
 npm ci
 npm start
 ```
+
+`npm start` genera el QR directo para Expo Go y desactiva la página que pregunta si quieres abrir Expo Go o Development Build. El script `scripts/start-expo-go.cjs` aplica `EXPO_NO_REDIRECT_PAGE=1` antes de iniciar Expo; es compatible con PowerShell, CMD y otras terminales, sin dependencias adicionales.
+
+En Android, abre Expo Go y usa su opción para escanear el QR nuevo de la terminal. La computadora y el teléfono deben estar en la misma red Wi-Fi. Deja la terminal ejecutándose: `Stopped server` indica que el servidor se detuvo y ya no puede entregar la aplicación al teléfono.
+
+Para reiniciar limpiando la caché:
+
+```bash
+npm start -- --clear
+```
+
+Si la red impide la conexión local, puedes usar `npm start -- --tunnel`. El modo túnel puede solicitar instalar la herramienta de conexión de Expo.
+
+Los mensajes de actualización de Expo y de paquetes son avisos de versiones, independientes del selector de apertura. Puedes revisar las recomendaciones con `npx expo install --check`; no es necesario actualizar el SDK para aplicar esta corrección.
 
 La vista y los registros locales pueden probarse con Expo Go compatible con SDK 58. NFC requiere una instalación de desarrollo que incluya su módulo nativo.
 
@@ -29,25 +43,30 @@ No se inventan fichas para las siete vacas: registra sus datos reales desde Gana
 
 ## Cambios de esta actualización
 
-`npm start` abre ahora Expo Go de forma predeterminada. `npm run start:go` sigue disponible como equivalente; `npm run start:dev` se reserva para una futura instalación de desarrollo. No hace falta generar una APK para revisar la interfaz ni los registros locales.
+La organización se simplificó de 125 a 97 archivos propios del proyecto:
 
-Se conserva la paleta de colores existente y se muestra el logotipo original enviado por el equipo, sin redibujarlo.
+- Las 21 pantallas que se usan en una sola ruta están directamente en `src/app`.
+- `src/screens` conserva los formularios de bovinos y ubicaciones y la lista de reportes sanitarios, que se comparten entre rutas.
+- Se retiraron cuatro componentes sin referencias: `ConfirmDialog`, `ListItem`, `LoadingSpinner` y `StatCard`.
+- La paleta compartida se define en `src/theme/tokens.ts`. `src/utils/constants.ts` conserva roles, estados y otros valores de negocio.
+- La sesión se consulta mediante `useAuthStore`; su inicialización se realiza desde el layout raíz.
+- El icono, la imagen de inicio y el primer plano del icono de Android reutilizan `assets/icon.png`, porque los tres archivos anteriores eran idénticos.
 
-Los filtros de preñadas y próximas dosis usan Ionicons de `@expo/vector-icons`. No se incluyen emojis en los componentes de la aplicación.
+`npm start` conserva el inicio directo en Expo Go. Se mantienen las rutas, los permisos, los repositorios, los cálculos y el diseño. Las dependencias y la caché de Expo se excluyen del ZIP.
 
 Los formularios breves de observación de salud, vacunación, nueva o edición de ubicación y datos de la finca se presentan como modales. En Android e iOS usan una hoja que ocupa inicialmente el 85 % de la pantalla y puede ampliarse. Incluyen título, botón de cierre y desplazamiento para acceder a los campos con el teclado abierto. Los formularios largos de ficha bovina, mediciones, reproducción y partos conservan su pantalla completa.
 
 ## Subrayados de Visual Studio Code
 
-Que la aplicación se ejecute no sustituye la revisión de tipos. React Native transforma TypeScript al empaquetar, mientras que el editor y `tsc` realizan una comprobación independiente. La captura recibida muestra subrayados, pero no incluye el mensaje ni su código, de modo que no permite asegurar una causa concreta.
+React Native transforma TypeScript al empaquetar, mientras que el editor y `tsc` realizan una comprobación independiente.
 
-1. Abre `Frontend` como carpeta de proyecto, o abre `AgroApp.code-workspace`.
+1. Abre `Frontend` como carpeta de proyecto.
 2. Ejecuta `npm ci` si todavía no instalaste las dependencias de esa carpeta.
 3. Abre un archivo `.tsx`. En la paleta de comandos, elige `TypeScript: Select TypeScript Version` y luego `Use Workspace Version`.
 4. Ejecuta `TypeScript: Restart TS Server` si los subrayados siguen mostrando un estado anterior.
 5. Comprueba `npm run typecheck`. Si devuelve errores, conserva su texto y el código completo para identificar el problema.
 
-Se incluye la selección del TypeScript local en la configuración del editor, y JSX y resolución de módulos se declaran expresamente en `tsconfig.json`. No se desactiva la validación ni se añaden exclusiones para ocultar errores.
+JSX y resolución de módulos se declaran en `tsconfig.json`. Los errores de `npm run typecheck` deben revisarse aunque el empaquetado de Expo haya terminado.
 
 ## Probar NFC en Android
 
@@ -71,42 +90,31 @@ Si el teléfono no tiene NFC, si está desactivado o si se usa la vista web o Ex
 
 ## Organización
 
-```text
-src/
-  app/                         Rutas de Expo Router
-    _layout.tsx                Inicio de sesión y rutas protegidas
-    login.tsx
-    (private)/
-      _layout.tsx              Pantallas y restricciones administrativas
-      (tabs)/                  Mi finca, Ganado, Salud y Gestión
-      bovinos/                 Ficha, registro y edición
-      pesos/                   Historial y mediciones con cinta
-      salud/                   Observación y detalle clínico
-      reportes/                Reportes de un bovino
-      vacunas/
-      reproduccion/
-      partos/
-      ubicaciones/
-      usuarios/
-      nfc.tsx
-      finca.tsx
-      sincronizacion.tsx
-  components/                  Controles y presentación compartidos
-  screens/                     Implementación de cada pantalla
-  database/
-    Database.ts                Adaptador y persistencia local
-    migrations.ts              Cambios de esquema sin borrar registros
-    mutations.ts               Operaciones pendientes con UUID
-    repositories/              Consultas y escritura por entidad
-  services/                    Sesión, NFC, API, envíos y pronósticos
-  store/                       Zustand para sesión, finca y filtros
-  hooks/                       Lectura y validación de parámetros
-  theme/                       Colores, tipografía y estilos compartidos
-  types/                       Modelos TypeScript
-  utils/                       Fechas, permisos y cálculos
-```
+| Carpeta | Contenido |
+| --- | --- |
+| `src/app` | Rutas y pantallas de Expo Router. Los layouts organizan la sesión, las pestañas y los permisos. |
+| `src/screens` | Tres pantallas compartidas entre rutas: ficha bovina, formulario de ubicación y lista de reportes. |
+| `src/components` | Controles reutilizables, área segura, formularios y presentación de modales. |
+| `src/database` | Apertura de almacenamiento, migraciones, operaciones pendientes y repositorios por entidad. |
+| `src/services` | Sesión persistida, NFC, API, sincronización y consulta de pronósticos. |
+| `src/store` | Estado de sesión y finca en Zustand. |
+| `src/context` | Altura del encabezado de formularios modales. |
+| `src/hooks` | Lectura y validación de parámetros de las rutas. |
+| `src/theme` | Paleta, tipografía y estilos compartidos. |
+| `src/types` | Modelos de datos y contratos del almacenamiento. |
+| `src/utils` | Fechas, permisos, cálculos y constantes del negocio. |
 
-Todas las pantallas navegan con Expo Router. Se retiraron `AppNavigator`, `App.tsx` y el punto de entrada anterior. `package.json` usa `expo-router/entry`. Las rutas transportan identificadores, no objetos completos que puedan quedar desactualizados.
+Para encontrar una pantalla, empieza por su ruta:
+
+- Mi finca: `src/app/(private)/(tabs)/index.tsx`.
+- Ganado: `src/app/(private)/(tabs)/ganado.tsx`.
+- Detalle de un bovino: `src/app/(private)/bovinos/[id].tsx`.
+- Registrar mediciones: `src/app/(private)/pesos/crear.tsx`.
+- Observación sanitaria: `src/app/(private)/salud/crear.tsx`.
+
+Las rutas de crear y editar bovinos comparten `src/screens/BovinoFormScreen.tsx`. Las de ubicaciones comparten `src/screens/UbicacionFormScreen.tsx`; Salud y los reportes individuales reutilizan `src/screens/ReportesSaludListScreen.tsx`.
+
+`package.json` usa `expo-router/entry`. Las rutas transportan identificadores para consultar los registros actuales.
 
 ## Tecnologías
 
@@ -160,7 +168,7 @@ La autenticación sigue siendo la autenticación local del prototipo original. L
 
 No se incluyeron backend, credenciales ni contratos reales de API entre los archivos recibidos. La aplicación muestra ese estado y no inventa sincronizaciones ni pronósticos.
 
-Copia `.env.example` a `.env` y define `EXPO_PUBLIC_API_URL` cuando dispongas de la API. Esa variable contiene una dirección pública, nunca un secreto. El cliente nativo buscará un token del servidor en SecureStore bajo `agroapp.api.token`; el inicio de sesión local no crea ese token.
+Crea un archivo `.env` junto a `package.json` y define `EXPO_PUBLIC_API_URL` cuando dispongas de la API. Esa variable contiene una dirección pública, nunca un secreto. El cliente nativo buscará un token del servidor en SecureStore bajo `agroapp.api.token`; el inicio de sesión local no crea ese token.
 
 Los contratos siguientes son propuestas tipadas que deben acordarse con el backend:
 

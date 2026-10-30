@@ -1,6 +1,6 @@
-import type { CriaParto, NewCriaParto } from '../../types/models';
-import type { SQLiteBindValue } from 'expo-sqlite';
-import { getDatabase } from '../Database';
+import type { CriaParto, NewCriaParto } from "../../types/models";
+import type { SQLiteBindValue } from "expo-sqlite";
+import { getDatabase } from "../Database";
 
 /**
  * Operaciones CRUD para la tabla CriasParto
@@ -60,31 +60,31 @@ export const update = async (id: number, data: Partial<NewCriaParto>) => {
   const values: SQLiteBindValue[] = [];
 
   if (data.IdParto !== undefined) {
-    fields.push('IdParto = ?');
+    fields.push("IdParto = ?");
     values.push(data.IdParto);
   }
   if (data.IdBovino !== undefined) {
-    fields.push('IdBovino = ?');
+    fields.push("IdBovino = ?");
     values.push(data.IdBovino);
   }
   if (data.Sexo !== undefined) {
-    fields.push('Sexo = ?');
+    fields.push("Sexo = ?");
     values.push(data.Sexo);
   }
   if (data.Nombre !== undefined) {
-    fields.push('Nombre = ?');
+    fields.push("Nombre = ?");
     values.push(data.Nombre);
   }
   if (data.PesoNacimiento !== undefined) {
-    fields.push('PesoNacimiento = ?');
+    fields.push("PesoNacimiento = ?");
     values.push(data.PesoNacimiento);
   }
   if (data.EstadoCria !== undefined) {
-    fields.push('EstadoCria = ?');
+    fields.push("EstadoCria = ?");
     values.push(data.EstadoCria);
   }
   if (data.Observaciones !== undefined) {
-    fields.push('Observaciones = ?');
+    fields.push("Observaciones = ?");
     values.push(data.Observaciones);
   }
 
@@ -92,7 +92,7 @@ export const update = async (id: number, data: Partial<NewCriaParto>) => {
 
   values.push(id);
   const result = await db.runAsync(
-    `UPDATE CriasParto SET ${fields.join(', ')} WHERE IdCria = ?`,
+    `UPDATE CriasParto SET ${fields.join(", ")} WHERE IdCria = ?`,
     values
   );
   return result.changes;
@@ -101,14 +101,11 @@ export const update = async (id: number, data: Partial<NewCriaParto>) => {
 /** Eliminar un registro de cría */
 export const remove = async (id: number) => {
   const db = await getDatabase();
-  const result = await db.runAsync(
-    'DELETE FROM CriasParto WHERE IdCria = ?',
-    [id]
-  );
+  const result = await db.runAsync("DELETE FROM CriasParto WHERE IdCria = ?", [
+    id,
+  ]);
   return result.changes;
 };
 
 export const CriasPartoDB = { getAll, getByParto, create, update, remove };
 export default CriasPartoDB;
-
-

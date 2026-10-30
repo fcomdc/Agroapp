@@ -1,1 +1,1 @@
-export { default } from '../../../screens/BovinoFormScreen';
+export { default } from "../../../screens/BovinoFormScreen";

@@ -1,3 +1,4 @@
+import { palette } from '../theme/tokens';
 import Screen from '../components/Screen';
 import { useRecordParams } from '../hooks/useRecordParams';
 import type { ReporteSalud } from '../types/models';
@@ -14,7 +15,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors } from '../utils/constants';
+
 import { formatDateTime } from '../utils/helpers';
 import { ReportesSaludDB } from '../database/repositories/ReportesSaludDB';
 import EmptyState from '../components/EmptyState';
@@ -53,7 +54,11 @@ export default function ReportesSaludListScreen() {
       } else {
         data = await ReportesSaludDB.getByEstado(filtroEstado);
       }
-      setReportes((data || []).filter(item => !idBovino || String(item.IdBovino) === String(idBovino)));
+      setReportes(
+        (data || []).filter(
+          (item) => !idBovino || String(item.IdBovino) === String(idBovino),
+        ),
+      );
     } catch (err) {
       console.error(err);
       Alert.alert('Error', 'No se pudieron cargar los reportes de salud');
@@ -66,7 +71,7 @@ export default function ReportesSaludListScreen() {
   useFocusEffect(
     useCallback(() => {
       loadData();
-    }, [loadData])
+    }, [loadData]),
   );
 
   return (
@@ -80,7 +85,9 @@ export default function ReportesSaludListScreen() {
               style={[styles.filterChip, isActive && styles.filterChipActive]}
               onPress={() => setFiltroEstado(estado)}
             >
-              <Text style={[styles.filterText, isActive && styles.filterTextActive]}>
+              <Text
+                style={[styles.filterText, isActive && styles.filterTextActive]}
+              >
                 {estado}
               </Text>
             </TouchableOpacity>
@@ -89,7 +96,11 @@ export default function ReportesSaludListScreen() {
       </View>
 
       {loading && !refreshing ? (
-        <ActivityIndicator size="large" color={Colors.PRIMARY} style={{ marginTop: 40 }} />
+        <ActivityIndicator
+          size="large"
+          color={palette.forest}
+          style={{ marginTop: 40 }}
+        />
       ) : reportes.length === 0 ? (
         <EmptyState
           icon="pulse-outline"
@@ -107,21 +118,24 @@ export default function ReportesSaludListScreen() {
                 setRefreshing(true);
                 loadData();
               }}
-              colors={[Colors.PRIMARY]}
+              colors={[palette.forest]}
             />
           }
           contentContainerStyle={{ padding: 16, paddingBottom: 112 }}
           keyboardShouldPersistTaps="handled"
           keyboardDismissMode="on-drag"
           renderItem={({ item }) => {
-            const gravColor = GRAVEDAD_COLORS[item.Gravedad] || Colors.WARNING;
-            const estColor = ESTADO_COLORS[item.Estado] || Colors.TEXT_LIGHT;
+            const gravColor = GRAVEDAD_COLORS[item.Gravedad] || palette.clay;
+            const estColor = ESTADO_COLORS[item.Estado] || palette.muted;
 
             return (
               <TouchableOpacity
                 style={styles.card}
                 onPress={() =>
-                  router.push({ pathname: '/salud/[id]', params: { id: item.IdReporte } })
+                  router.push({
+                    pathname: '/salud/[id]',
+                    params: { id: item.IdReporte },
+                  })
                 }
               >
                 <View style={styles.cardHeader}>
@@ -131,9 +145,16 @@ export default function ReportesSaludListScreen() {
                         ? `${item.NombreBovino} (${item.CodigoBovino})`
                         : `Bovino: ${item.CodigoBovino || item.IdBovino}`}
                     </Text>
-                    <Text style={styles.dateText}>{formatDateTime(item.FechaReporte)}</Text>
+                    <Text style={styles.dateText}>
+                      {formatDateTime(item.FechaReporte)}
+                    </Text>
                   </View>
-                  <View style={[styles.badge, { backgroundColor: gravColor + '20' }]}>
+                  <View
+                    style={[
+                      styles.badge,
+                      { backgroundColor: gravColor + '20' },
+                    ]}
+                  >
                     <Text style={[styles.badgeText, { color: gravColor }]}>
                       {item.Gravedad}
                     </Text>
@@ -146,7 +167,9 @@ export default function ReportesSaludListScreen() {
 
                 <View style={styles.cardFooter}>
                   <View style={[styles.statePill, { borderColor: estColor }]}>
-                    <Text style={[styles.stateText, { color: estColor }]}>{item.Estado}</Text>
+                    <Text style={[styles.stateText, { color: estColor }]}>
+                      {item.Estado}
+                    </Text>
                   </View>
                   <Text style={styles.reporterText}>
                     Reportó: {item.NombreUsuario || 'Desconocido'}
@@ -160,7 +183,9 @@ export default function ReportesSaludListScreen() {
 
       <TouchableOpacity
         style={styles.fab}
-        onPress={() => router.push({ pathname: '/salud/crear', params: { idBovino } })}
+        onPress={() =>
+          router.push({ pathname: '/salud/crear', params: { idBovino } })
+        }
       >
         <Ionicons name="add" size={28} color="#FFF" />
       </TouchableOpacity>
@@ -169,10 +194,10 @@ export default function ReportesSaludListScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
+  container: { flex: 1, backgroundColor: palette.cream },
   filtersBar: {
     flexDirection: 'row',
-    backgroundColor: Colors.BACKGROUND,
+    backgroundColor: palette.cream,
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: '#E3E6DB',
@@ -185,8 +210,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#F0F0F0',
     alignItems: 'center',
   },
-  filterChipActive: { backgroundColor: Colors.PRIMARY },
-  filterText: { fontSize: 13, fontWeight: '600', color: Colors.TEXT_LIGHT },
+  filterChipActive: { backgroundColor: palette.forest },
+  filterText: { fontSize: 13, fontWeight: '600', color: palette.muted },
   filterTextActive: { color: '#FFF' },
   card: {
     backgroundColor: '#FFF',
@@ -199,12 +224,21 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     shadowOffset: { width: 0, height: 2 },
   },
-  cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
-  bovinoTitle: { fontSize: 16, fontWeight: 'bold', color: Colors.TEXT },
-  dateText: { fontSize: 12, color: Colors.TEXT_LIGHT, marginTop: 2 },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  bovinoTitle: { fontSize: 16, fontWeight: 'bold', color: palette.ink },
+  dateText: { fontSize: 12, color: palette.muted, marginTop: 2 },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
   badgeText: { fontSize: 12, fontWeight: 'bold' },
-  sintomasText: { fontSize: 14, color: Colors.TEXT, marginVertical: 10, lineHeight: 20 },
+  sintomasText: {
+    fontSize: 14,
+    color: palette.ink,
+    marginVertical: 10,
+    lineHeight: 20,
+  },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -215,9 +249,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: '#F0F0F0',
   },
-  statePill: { borderWidth: 1, paddingHorizontal: 8, paddingVertical: 2, borderRadius: 12 },
+  statePill: {
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 12,
+  },
   stateText: { fontSize: 12, fontWeight: '600' },
-  reporterText: { fontSize: 12, color: Colors.TEXT_LIGHT, flexShrink: 1 },
+  reporterText: { fontSize: 12, color: palette.muted, flexShrink: 1 },
   fab: {
     position: 'absolute',
     bottom: 24,
@@ -225,10 +264,9 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: palette.forest,
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 6,
   },
 });
-

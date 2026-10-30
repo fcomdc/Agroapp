@@ -1,6 +1,6 @@
-import type { Bovino, NewBovino } from '../../types/models';
-import type { SQLiteBindValue } from 'expo-sqlite';
-import { getDatabase } from '../Database';
+import type { Bovino, NewBovino } from "../../types/models";
+import type { SQLiteBindValue } from "expo-sqlite";
+import { getDatabase } from "../Database";
 
 /**
  * Operaciones CRUD para la tabla Bovinos
@@ -56,7 +56,7 @@ export const create = async (data: NewBovino) => {
       data.Color || null,
       data.Foto || null,
       data.IdUbicacion || null,
-      data.Estado || 'Activo',
+      data.Estado || "Activo",
       data.Observaciones || null,
     ]
   );
@@ -70,43 +70,43 @@ export const update = async (id: number, data: Partial<NewBovino>) => {
   const values: SQLiteBindValue[] = [];
 
   if (data.Codigo !== undefined) {
-    fields.push('Codigo = ?');
+    fields.push("Codigo = ?");
     values.push(data.Codigo);
   }
   if (data.Nombre !== undefined) {
-    fields.push('Nombre = ?');
+    fields.push("Nombre = ?");
     values.push(data.Nombre);
   }
   if (data.Sexo !== undefined) {
-    fields.push('Sexo = ?');
+    fields.push("Sexo = ?");
     values.push(data.Sexo);
   }
   if (data.FechaNacimiento !== undefined) {
-    fields.push('FechaNacimiento = ?');
+    fields.push("FechaNacimiento = ?");
     values.push(data.FechaNacimiento);
   }
   if (data.Raza !== undefined) {
-    fields.push('Raza = ?');
+    fields.push("Raza = ?");
     values.push(data.Raza);
   }
   if (data.Color !== undefined) {
-    fields.push('Color = ?');
+    fields.push("Color = ?");
     values.push(data.Color);
   }
   if (data.Foto !== undefined) {
-    fields.push('Foto = ?');
+    fields.push("Foto = ?");
     values.push(data.Foto);
   }
   if (data.IdUbicacion !== undefined) {
-    fields.push('IdUbicacion = ?');
+    fields.push("IdUbicacion = ?");
     values.push(data.IdUbicacion);
   }
   if (data.Estado !== undefined) {
-    fields.push('Estado = ?');
+    fields.push("Estado = ?");
     values.push(data.Estado);
   }
   if (data.Observaciones !== undefined) {
-    fields.push('Observaciones = ?');
+    fields.push("Observaciones = ?");
     values.push(data.Observaciones);
   }
 
@@ -114,7 +114,7 @@ export const update = async (id: number, data: Partial<NewBovino>) => {
 
   values.push(id);
   const result = await db.runAsync(
-    `UPDATE Bovinos SET ${fields.join(', ')} WHERE IdBovino = ?`,
+    `UPDATE Bovinos SET ${fields.join(", ")} WHERE IdBovino = ?`,
     values
   );
   return result.changes;
@@ -179,9 +179,18 @@ export const search = async (query: string) => {
   );
 };
 
-export const BovinosDB = { getAll, getById, getByCode, create, insert: create, update, remove, delete: remove, getByUbicacion, getByEstado, getCount, search };
+export const BovinosDB = {
+  getAll,
+  getById,
+  getByCode,
+  create,
+  insert: create,
+  update,
+  remove,
+  delete: remove,
+  getByUbicacion,
+  getByEstado,
+  getCount,
+  search,
+};
 export default BovinosDB;
-
-
-
-

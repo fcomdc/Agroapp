@@ -1,6 +1,6 @@
-import type { NfcTag, NewNfcTag } from '../../types/models';
-import type { SQLiteBindValue } from 'expo-sqlite';
-import { getDatabase } from '../Database';
+import type { NfcTag, NewNfcTag } from "../../types/models";
+import type { SQLiteBindValue } from "expo-sqlite";
+import { getDatabase } from "../Database";
 
 /**
  * Operaciones CRUD para la tabla NFC
@@ -21,7 +21,7 @@ export const getAll = async () => {
 export const getByBovino = async (idBovino: number) => {
   const db = await getDatabase();
   return await db.getAllAsync<NfcTag>(
-    'SELECT * FROM NFC WHERE IdBovino = ? ORDER BY FechaAsignacion DESC',
+    "SELECT * FROM NFC WHERE IdBovino = ? ORDER BY FechaAsignacion DESC",
     [idBovino]
   );
 };
@@ -49,19 +49,19 @@ export const update = async (id: number, data: Partial<NewNfcTag>) => {
   const values: SQLiteBindValue[] = [];
 
   if (data.IdBovino !== undefined) {
-    fields.push('IdBovino = ?');
+    fields.push("IdBovino = ?");
     values.push(data.IdBovino);
   }
   if (data.UID_NFC !== undefined) {
-    fields.push('UID_NFC = ?');
+    fields.push("UID_NFC = ?");
     values.push(data.UID_NFC);
   }
   if (data.TipoTag !== undefined) {
-    fields.push('TipoTag = ?');
+    fields.push("TipoTag = ?");
     values.push(data.TipoTag);
   }
   if (data.Estado !== undefined) {
-    fields.push('Estado = ?');
+    fields.push("Estado = ?");
     values.push(data.Estado);
   }
 
@@ -69,7 +69,7 @@ export const update = async (id: number, data: Partial<NewNfcTag>) => {
 
   values.push(id);
   const result = await db.runAsync(
-    `UPDATE NFC SET ${fields.join(', ')} WHERE IdNFC = ?`,
+    `UPDATE NFC SET ${fields.join(", ")} WHERE IdNFC = ?`,
     values
   );
   return result.changes;
@@ -79,7 +79,7 @@ export const update = async (id: number, data: Partial<NewNfcTag>) => {
 export const remove = async (id: number) => {
   const db = await getDatabase();
   const result = await db.runAsync(
-    'UPDATE NFC SET Estado = 0 WHERE IdNFC = ?',
+    "UPDATE NFC SET Estado = 0 WHERE IdNFC = ?",
     [id]
   );
   return result.changes;
@@ -99,5 +99,3 @@ export const getByUID = async (uid: string) => {
 
 export const NfcDB = { getAll, getByBovino, create, update, remove, getByUID };
 export default NfcDB;
-
-

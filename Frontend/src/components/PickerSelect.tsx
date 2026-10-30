@@ -1,6 +1,6 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors } from '../utils/constants';
+import { palette } from "../theme/tokens";
+import React from "react";
+import { View, Text, TouchableOpacity, StyleSheet } from "react-native";
 
 /** Selector de opciones con valores y callbacks del mismo tipo. */
 interface Props<T extends string | number | null> {
@@ -8,7 +8,11 @@ interface Props<T extends string | number | null> {
   selectedValue: T;
   onValueChange: (value: T) => void;
 }
-export default function PickerSelect<T extends string | number | null>({ options = [], selectedValue, onValueChange }: Props<T>) {
+export default function PickerSelect<T extends string | number | null>({
+  options = [],
+  selectedValue,
+  onValueChange,
+}: Props<T>) {
   return (
     <View style={styles.container}>
       {options.map((opt) => {
@@ -22,7 +26,9 @@ export default function PickerSelect<T extends string | number | null>({ options
             accessibilityState={{ selected: isSelected }}
             activeOpacity={0.7}
           >
-            <Text style={[styles.optionText, isSelected && styles.optionTextActive]}>
+            <Text
+              style={[styles.optionText, isSelected && styles.optionTextActive]}
+            >
               {opt.label}
             </Text>
           </TouchableOpacity>
@@ -34,35 +40,34 @@ export default function PickerSelect<T extends string | number | null>({ options
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     marginBottom: 12,
     marginTop: 4,
   },
   optionBtn: {
-    maxWidth: '100%',
+    maxWidth: "100%",
     flexShrink: 1,
     paddingHorizontal: 14,
     paddingVertical: 12,
     borderRadius: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderWidth: 1,
-    borderColor: Colors.BORDER,
+    borderColor: palette.line,
     marginRight: 8,
     marginBottom: 8,
   },
   optionBtnActive: {
-    backgroundColor: Colors.PRIMARY,
-    borderColor: Colors.PRIMARY,
+    backgroundColor: palette.forest,
+    borderColor: palette.forest,
   },
   optionText: {
     fontSize: 13,
-    color: Colors.TEXT,
-    fontWeight: '500',
+    color: palette.ink,
+    fontWeight: "500",
   },
   optionTextActive: {
-    color: '#FFF',
-    fontWeight: 'bold',
+    color: "#FFF",
+    fontWeight: "bold",
   },
 });
-

@@ -1,3 +1,4 @@
+import { palette } from '../theme/tokens';
 import FormScreen from '../components/FormScreen';
 import { useRecordParams } from '../hooks/useRecordParams';
 import React, { useState, useEffect } from 'react';
@@ -11,10 +12,17 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Colors } from '../utils/constants';
+
 import { UbicacionesDB } from '../database/repositories/UbicacionesDB';
 
-const TIPOS_UBICACION = ['Potrero', 'Corral', 'Establo', 'Maternidad', 'Enfermería', 'Lote Pastura'];
+const TIPOS_UBICACION = [
+  'Potrero',
+  'Corral',
+  'Establo',
+  'Maternidad',
+  'Enfermería',
+  'Lote Pastura',
+];
 
 export default function UbicacionFormScreen() {
   const router = useRouter();
@@ -28,9 +36,15 @@ export default function UbicacionFormScreen() {
 
   useEffect(() => {
     if (!params.id) return;
-    UbicacionesDB.getById(params.id).then(record => {
-      if (record) { setNombre(record.Nombre); setTipo(record.Tipo || 'Potrero'); setDescripcion(record.Descripcion || ''); }
-    }).catch(() => Alert.alert('Error', 'No se pudo cargar la ubicación.'));
+    UbicacionesDB.getById(params.id)
+      .then((record) => {
+        if (record) {
+          setNombre(record.Nombre);
+          setTipo(record.Tipo || 'Potrero');
+          setDescripcion(record.Descripcion || '');
+        }
+      })
+      .catch(() => Alert.alert('Error', 'No se pudo cargar la ubicación.'));
   }, [params.id]);
 
   const handleSave = async () => {
@@ -66,7 +80,10 @@ export default function UbicacionFormScreen() {
   };
 
   return (
-    <FormScreen style={styles.container} contentContainerStyle={{ padding: 16 }}>
+    <FormScreen
+      style={styles.container}
+      contentContainerStyle={{ padding: 16 }}
+    >
       <Text style={styles.label}>Nombre de la Ubicación / Lote *</Text>
       <TextInput
         style={styles.input}
@@ -85,7 +102,12 @@ export default function UbicacionFormScreen() {
               style={[styles.tipoChip, isSelected && styles.tipoChipActive]}
               onPress={() => setTipo(t)}
             >
-              <Text style={[styles.tipoChipText, isSelected && styles.tipoChipTextActive]}>
+              <Text
+                style={[
+                  styles.tipoChipText,
+                  isSelected && styles.tipoChipTextActive,
+                ]}
+              >
                 {t}
               </Text>
             </TouchableOpacity>
@@ -121,8 +143,14 @@ export default function UbicacionFormScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.BACKGROUND },
-  label: { fontSize: 14, fontWeight: '600', color: Colors.TEXT, marginBottom: 6, marginTop: 4 },
+  container: { flex: 1, backgroundColor: palette.cream },
+  label: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: palette.ink,
+    marginBottom: 6,
+    marginTop: 4,
+  },
   input: {
     backgroundColor: '#FFF',
     borderWidth: 1,
@@ -144,11 +172,14 @@ const styles = StyleSheet.create({
     marginRight: 6,
     marginBottom: 8,
   },
-  tipoChipActive: { backgroundColor: Colors.PRIMARY, borderColor: Colors.PRIMARY },
-  tipoChipText: { fontSize: 13, color: Colors.TEXT },
+  tipoChipActive: {
+    backgroundColor: palette.forest,
+    borderColor: palette.forest,
+  },
+  tipoChipText: { fontSize: 13, color: palette.ink },
   tipoChipTextActive: { color: '#FFF', fontWeight: 'bold' },
   submitBtn: {
-    backgroundColor: Colors.PRIMARY,
+    backgroundColor: palette.forest,
     padding: 16,
     borderRadius: 10,
     alignItems: 'center',
@@ -157,4 +188,3 @@ const styles = StyleSheet.create({
   btnDisabled: { opacity: 0.6 },
   submitBtnText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
 });
-

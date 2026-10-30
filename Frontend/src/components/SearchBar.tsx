@@ -1,13 +1,14 @@
-import React from 'react';
-import { View, TextInput, TouchableOpacity, StyleSheet } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { Colors } from '../utils/constants';
+import { palette } from "../theme/tokens";
+import React from "react";
+import { View, TextInput, TouchableOpacity, StyleSheet } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 
-interface Props { value?: string; onChangeText: (value: string) => void; placeholder?: string; onClear?: () => void; }
-
-
-
-
+interface Props {
+  value?: string;
+  onChangeText: (value: string) => void;
+  placeholder?: string;
+  onClear?: () => void;
+}
 
 /**
  * Componente reutilizable de barra de búsqueda
@@ -17,35 +18,53 @@ interface Props { value?: string; onChangeText: (value: string) => void; placeho
  * @param {Function} onClear - Función al limpiar el campo (opcional)
  */
 const SearchBar = ({
-  value = '',
+  value = "",
   onChangeText,
-  placeholder = 'Buscar...',
+  placeholder = "Buscar...",
   onClear,
 }: Props) => {
   const handleClear = () => {
     if (onClear) {
       onClear();
     } else if (onChangeText) {
-      onChangeText('');
+      onChangeText("");
     }
   };
 
   return (
     <View style={styles.container}>
-      <Ionicons name="search-outline" size={20} color={Colors.TEXT_LIGHT} style={styles.searchIcon} />
+      <Ionicons
+        name="search-outline"
+        size={20}
+        color={palette.muted}
+        style={styles.searchIcon}
+      />
       <TextInput
         style={styles.input}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
-        placeholderTextColor={Colors.TEXT_LIGHT}
+        placeholderTextColor={palette.muted}
         autoCapitalize="none"
         autoCorrect={false}
         returnKeyType="search"
       />
       {value.length > 0 && (
-        <TouchableOpacity onPress={handleClear} style={[styles.clearButton, { minHeight: 44, minWidth: 40, justifyContent: 'center', alignItems: 'center' }]} accessibilityLabel="Limpiar búsqueda" accessibilityRole="button">
-          <Ionicons name="close-circle" size={20} color={Colors.TEXT_LIGHT} />
+        <TouchableOpacity
+          onPress={handleClear}
+          style={[
+            styles.clearButton,
+            {
+              minHeight: 44,
+              minWidth: 40,
+              justifyContent: "center",
+              alignItems: "center",
+            },
+          ]}
+          accessibilityLabel="Limpiar búsqueda"
+          accessibilityRole="button"
+        >
+          <Ionicons name="close-circle" size={20} color={palette.muted} />
         </TouchableOpacity>
       )}
     </View>
@@ -54,18 +73,18 @@ const SearchBar = ({
 
 const styles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.WHITE,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: palette.paper,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: Colors.BORDER,
+    borderColor: palette.line,
     marginHorizontal: 22,
     marginVertical: 10,
     paddingHorizontal: 12,
     minHeight: 52,
     elevation: 0,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0,
     shadowRadius: 2,
@@ -78,7 +97,7 @@ const styles = StyleSheet.create({
     minWidth: 0,
     minHeight: 48,
     fontSize: 15,
-    color: Colors.TEXT,
+    color: palette.ink,
     padding: 0,
   },
   clearButton: {
@@ -88,4 +107,3 @@ const styles = StyleSheet.create({
 });
 
 export default SearchBar;
-

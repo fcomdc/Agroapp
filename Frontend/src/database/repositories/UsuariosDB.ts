@@ -1,6 +1,6 @@
-import type { Usuario, UsuarioInput } from '../../types/models';
-import type { SQLiteBindValue } from 'expo-sqlite';
-import { getDatabase } from '../Database';
+import type { Usuario, UsuarioInput } from "../../types/models";
+import type { SQLiteBindValue } from "expo-sqlite";
+import { getDatabase } from "../Database";
 
 /**
  * Operaciones CRUD para la tabla Usuarios
@@ -10,7 +10,7 @@ import { getDatabase } from '../Database';
 export const getAll = async () => {
   const db = await getDatabase();
   return await db.getAllAsync<Usuario>(
-    'SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios ORDER BY NombreCompleto'
+    "SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios ORDER BY NombreCompleto"
   );
 };
 
@@ -18,7 +18,7 @@ export const getAll = async () => {
 export const getById = async (id: number) => {
   const db = await getDatabase();
   return await db.getFirstAsync<Usuario>(
-    'SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios WHERE IdUsuario = ?',
+    "SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios WHERE IdUsuario = ?",
     [id]
   );
 };
@@ -47,23 +47,23 @@ export const update = async (id: number, data: Partial<UsuarioInput>) => {
   const values: SQLiteBindValue[] = [];
 
   if (data.NombreCompleto !== undefined) {
-    fields.push('NombreCompleto = ?');
+    fields.push("NombreCompleto = ?");
     values.push(data.NombreCompleto);
   }
   if (data.Usuario !== undefined) {
-    fields.push('Usuario = ?');
+    fields.push("Usuario = ?");
     values.push(data.Usuario);
   }
   if (data.Contrasena !== undefined) {
-    fields.push('Contrasena = ?');
+    fields.push("Contrasena = ?");
     values.push(data.Contrasena);
   }
   if (data.Rol !== undefined) {
-    fields.push('Rol = ?');
+    fields.push("Rol = ?");
     values.push(data.Rol);
   }
   if (data.Estado !== undefined) {
-    fields.push('Estado = ?');
+    fields.push("Estado = ?");
     values.push(data.Estado);
   }
 
@@ -71,7 +71,7 @@ export const update = async (id: number, data: Partial<UsuarioInput>) => {
 
   values.push(id);
   const result = await db.runAsync(
-    `UPDATE Usuarios SET ${fields.join(', ')} WHERE IdUsuario = ?`,
+    `UPDATE Usuarios SET ${fields.join(", ")} WHERE IdUsuario = ?`,
     values
   );
   return result.changes;
@@ -81,7 +81,7 @@ export const update = async (id: number, data: Partial<UsuarioInput>) => {
 export const remove = async (id: number) => {
   const db = await getDatabase();
   const result = await db.runAsync(
-    'UPDATE Usuarios SET Estado = 0 WHERE IdUsuario = ?',
+    "UPDATE Usuarios SET Estado = 0 WHERE IdUsuario = ?",
     [id]
   );
   return result.changes;
@@ -102,12 +102,18 @@ export const login = async (usuario: string, contrasena: string) => {
 export const getByRol = async (rol: string) => {
   const db = await getDatabase();
   return await db.getAllAsync<Usuario>(
-    'SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios WHERE Rol = ? AND Estado = 1 ORDER BY NombreCompleto',
+    "SELECT IdUsuario, NombreCompleto, Usuario, Rol, Estado, FechaRegistro FROM Usuarios WHERE Rol = ? AND Estado = 1 ORDER BY NombreCompleto",
     [rol]
   );
 };
 
-export const UsuariosDB = { getAll, getById, create, update, remove, login, getByRol };
+export const UsuariosDB = {
+  getAll,
+  getById,
+  create,
+  update,
+  remove,
+  login,
+  getByRol,
+};
 export default UsuariosDB;
-
-
